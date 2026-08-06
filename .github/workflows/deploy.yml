@@ -1,0 +1,58 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ vars.PROJECT_ID }}
+      REGION: ${{ vars.REGION }}
+      REPO: fresh-prints
+      SERVICE: fresh-prints
+      BUCKET: ${{ vars.PROJECT_ID }}-fresh-prints-db
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Artifact Registry Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+
+      - name: Build and push image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}"
+          docker build -t "${IMAGE}:${GITHUB_SHA}" -t "${IMAGE}:latest" .
+          docker push "${IMAGE}:${GITHUB_SHA}"
+          docker push "${IMAGE}:latest"
+
+      - name: Deploy to Cloud Run
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPO}/${SERVICE}"
+          # ^||^ delimiter: ALLOWED_GITHUB_USERNAMES / ALLOWED_INVOKER_EMAILS contain commas
+          gcloud run deploy "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --image="${IMAGE}:${GITHUB_SHA}" \
+            --platform=managed \
+            --allow-unauthenticated \
+            --max-instances=1 \
+            --add-volume=name=db-storage,type=cloud-storage,bucket="${BUCKET}" \
+            --add-volume-mount=volume=db-storage,mount-path=/data \
+            --set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest,GH_CLIENT_SECRET=GH_CLIENT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest \
+            --update-env-vars="^||^NODE_ENV=production||GH_CLIENT_ID=${{ vars.GH_CLIENT_ID }}||ALLOWED_GITHUB_USERNAMES=${{ vars.ALLOWED_GITHUB_USERNAMES }}||ALLOWED_INVOKER_EMAILS=${{ vars.ALLOWED_INVOKER_EMAILS }}||DIGEST_EMAIL_TO=${{ vars.DIGEST_EMAIL_TO }}||DIGEST_EMAIL_FROM=${{ vars.DIGEST_EMAIL_FROM }}||APP_URL=${{ vars.APP_URL }}||CLOUD_RUN_SERVICE_URL=${{ vars.CLOUD_RUN_SERVICE_URL }}"

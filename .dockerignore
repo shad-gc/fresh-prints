@@ -1,0 +1,14 @@
+node_modules
+client/node_modules
+client/dist
+.git
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+sa-key.json
+comics
+prints.db
+prints-sessions.db
+docs/.gitkeep
