@@ -11,6 +11,7 @@ import { canonicalizeUrl, titleSimilarity, normalizeTitle } from '../src/service
 import { clusterItems } from '../src/services/cluster.js';
 import { runMigrations } from '../src/db/migrate.js';
 import { validateEditionPayload } from '../src/services/anthropic.js';
+import { isAllowedInvoker } from '../src/middleware/requireIdentityToken.js';
 
 // --- URL canonicalization ---
 assert.equal(
@@ -89,6 +90,32 @@ try {
   threw = true;
 }
 assert.ok(threw, 'short top_stories must fail validation');
+
+// --- Identity-token caller pinning ---
+const allow = ['github-deployer@example-project.iam.gserviceaccount.com'];
+assert.ok(
+  isAllowedInvoker(
+    { email: 'GitHub-Deployer@Example-Project.iam.gserviceaccount.com', email_verified: true },
+    allow
+  ),
+  'allowlisted verified caller must pass (case-insensitive)'
+);
+assert.ok(
+  !isAllowedInvoker(
+    { email: 'stranger@evil-project.iam.gserviceaccount.com', email_verified: true },
+    allow
+  ),
+  'non-allowlisted caller must fail'
+);
+assert.ok(
+  !isAllowedInvoker(
+    { email: 'github-deployer@example-project.iam.gserviceaccount.com', email_verified: false },
+    allow
+  ),
+  'unverified email must fail'
+);
+assert.ok(!isAllowedInvoker({ email_verified: true }, allow), 'missing email must fail');
+assert.ok(!isAllowedInvoker(null, allow), 'null payload must fail');
 
 db.close();
 fs.rmSync(tmp, { recursive: true, force: true });

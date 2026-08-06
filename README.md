@@ -128,8 +128,8 @@ apps, and GitHub Actions variables/secrets.
 
 Required Actions **secret**: `GCP_SA_KEY`  
 Required Actions **variables**: `PROJECT_ID`, `REGION`, `GH_CLIENT_ID`,
-`ALLOWED_GITHUB_USERNAMES`, `DIGEST_EMAIL_TO`, `DIGEST_EMAIL_FROM`, `APP_URL`,
-`CLOUD_RUN_SERVICE_URL`
+`ALLOWED_GITHUB_USERNAMES`, `ALLOWED_INVOKER_EMAILS`, `DIGEST_EMAIL_TO`,
+`DIGEST_EMAIL_FROM`, `APP_URL`, `CLOUD_RUN_SERVICE_URL`
 
 ## Security notes (public repo)
 
@@ -137,7 +137,12 @@ Required Actions **variables**: `PROJECT_ID`, `REGION`, `GH_CLIENT_ID`,
 - Workflows mask identity tokens with `::add-mask::` before any step that
   could print them; failed job logs do not dump response bodies.
 - Cloud Run is `--allow-unauthenticated`; the app enforces GitHub OAuth for
-  humans and GCP identity tokens for ingest/publish.
+  humans and GCP identity tokens for ingest/publish. Tokens are pinned to a
+  caller allowlist (`ALLOWED_INVOKER_EMAILS`, `email_verified` required) —
+  audience verification alone would accept a token minted by any service
+  account in any project.
+- SQLite runs `journal_mode=DELETE` in production: WAL needs shared-memory
+  files and real file locking that the GCS FUSE volume doesn't provide.
 - `app.set('trust proxy', 1)` is set before session middleware so secure
   cookies work behind Cloud Run's TLS terminator.
 

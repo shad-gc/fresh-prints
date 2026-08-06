@@ -4,7 +4,18 @@ import { config } from '../config.js';
 const client = new OAuth2Client();
 
 /**
- * Verify a GCP identity token (OIDC) for Cloud Scheduler / GitHub Actions callers.
+ * True only for a Google-verified caller identity on the allowlist.
+ * Signature + audience prove the token is ours-shaped; they do NOT prove who
+ * minted it — any service account anywhere can request our audience. Pin the
+ * caller by verified email.
+ */
+export function isAllowedInvoker(payload, allowlist = config.allowedInvokerEmails) {
+  if (!payload || payload.email_verified !== true || !payload.email) return false;
+  return allowlist.includes(payload.email.toLowerCase());
+}
+
+/**
+ * Verify a GCP identity token (OIDC) for GitHub Actions / scheduler callers.
  * Skipped entirely when NODE_ENV=development.
  */
 export async function requireIdentityToken(req, res, next) {
@@ -31,6 +42,11 @@ export async function requireIdentityToken(req, res, next) {
     const payload = ticket.getPayload();
     if (!payload) {
       return res.status(401).json({ error: 'invalid_token' });
+    }
+    if (!isAllowedInvoker(payload)) {
+      // Cloud Run logs are private; the email is useful for debugging IAM.
+      console.error(`[identity] caller not allowlisted: ${payload.email || '(no email)'}`);
+      return res.status(403).json({ error: 'caller_not_allowed' });
     }
     req.identity = payload;
     return next();

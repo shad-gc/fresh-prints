@@ -140,6 +140,7 @@ Also create these **repository Variables** (Settings → Secrets and variables �
 | `REGION` | e.g. `us-west1` |
 | `GH_CLIENT_ID` | prod OAuth app client id |
 | `ALLOWED_GITHUB_USERNAMES` | comma-separated GitHub usernames |
+| `ALLOWED_INVOKER_EMAILS` | `github-deployer@[PROJECT_ID].iam.gserviceaccount.com` — SA emails allowed to call ingest/publish |
 | `DIGEST_EMAIL_TO` | your inbox |
 | `DIGEST_EMAIL_FROM` | verified Resend sender, e.g. `Fresh Prints <digest@yourdomain.com>` |
 | `APP_URL` | Cloud Run service URL (no trailing slash) |
@@ -178,7 +179,14 @@ GitHub → Settings → Developer settings → OAuth Apps → New OAuth App.
 # Health (public)
 curl -sS "${APP_URL}/health"
 
-# Ingest / publish via Actions → workflow_dispatch, or mint a token locally:
-TOKEN="$(gcloud auth print-identity-token --audiences="${APP_URL}")"
+# Ingest / publish via Actions → workflow_dispatch, or mint a token locally.
+# The app pins callers to ALLOWED_INVOKER_EMAILS, so the token must come from
+# the deployer SA — impersonate it (--include-email is required; without it
+# the token has no email claim and the app rejects it). Your user needs
+# roles/iam.serviceAccountTokenCreator on the SA for impersonation.
+TOKEN="$(gcloud auth print-identity-token \
+  --impersonate-service-account="${SA_EMAIL}" \
+  --audiences="${APP_URL}" \
+  --include-email)"
 curl -sS -X POST "${APP_URL}/api/ingest" -H "Authorization: Bearer ${TOKEN}"
 ```

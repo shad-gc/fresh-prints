@@ -2,6 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 import session from 'express-session';
+import { config } from '../config.js';
 
 /**
  * Minimal express-session store backed by better-sqlite3.
@@ -19,7 +20,8 @@ export function createSqliteSessionStore(dbPath) {
         fs.mkdirSync(dir, { recursive: true });
       }
       this.db = new Database(file);
-      this.db.pragma('journal_mode = WAL');
+      // Same GCS FUSE constraint as the main DB: no WAL in production.
+      this.db.pragma(config.isDev ? 'journal_mode = WAL' : 'journal_mode = DELETE');
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS sessions (
           sid TEXT PRIMARY KEY,

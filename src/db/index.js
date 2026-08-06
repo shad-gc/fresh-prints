@@ -17,7 +17,9 @@ export function getDb() {
   }
 
   db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
+  // WAL needs -shm files, mmap, and real POSIX locking — the GCS FUSE volume
+  // at /data supports none of them. DELETE journal in production, WAL locally.
+  db.pragma(config.isDev ? 'journal_mode = WAL' : 'journal_mode = DELETE');
   db.pragma('foreign_keys = ON');
   runMigrations(db);
   seedSources(db);

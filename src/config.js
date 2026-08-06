@@ -20,6 +20,13 @@ export const config = {
     .split(',')
     .map((u) => u.trim().toLowerCase())
     .filter(Boolean),
+  // Service-account emails allowed to invoke /api/ingest and /api/publish.
+  // Audience verification alone is NOT authorization — any SA in any project
+  // can mint an identity token with our URL as the audience.
+  allowedInvokerEmails: (process.env.ALLOWED_INVOKER_EMAILS || '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
   anthropicApiKey: process.env.ANTHROPIC_API_KEY || '',
   anthropicModel: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
   resendApiKey: process.env.RESEND_API_KEY || '',
@@ -41,6 +48,7 @@ if (!config.isDev) {
   requiredInProduction('GH_CLIENT_ID');
   requiredInProduction('GH_CLIENT_SECRET');
   requiredInProduction('ALLOWED_GITHUB_USERNAMES');
+  requiredInProduction('ALLOWED_INVOKER_EMAILS');
   requiredInProduction('ANTHROPIC_API_KEY');
   requiredInProduction('RESEND_API_KEY');
   requiredInProduction('DIGEST_EMAIL_FROM');
