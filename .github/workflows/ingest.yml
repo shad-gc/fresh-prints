@@ -8,38 +8,36 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 jobs:
   ingest:
     runs-on: ubuntu-latest
-    env:
-      PROJECT_ID: ${{ vars.PROJECT_ID }}
-      REGION: ${{ vars.REGION }}
-      SERVICE: fresh-prints
-
     steps:
-      - name: Authenticate to Google Cloud
+      - name: Authenticate to Google Cloud (Workload Identity Federation)
+        id: auth
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Set up Cloud SDK
-        uses: google-github-actions/setup-gcloud@v2
+          workload_identity_provider: ${{ vars.WIF_PROVIDER }}
+          service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          token_format: id_token
+          id_token_audience: ${{ vars.CLOUD_RUN_SERVICE_URL }}
+          # Mandatory: without the email claim, the app's caller pinning
+          # (ALLOWED_INVOKER_EMAILS) rejects the token.
+          id_token_include_email: true
 
       - name: Call /api/ingest with identity token
+        env:
+          SERVICE_URL: ${{ vars.CLOUD_RUN_SERVICE_URL }}
+          ID_TOKEN: ${{ steps.auth.outputs.id_token }}
         run: |
           set -euo pipefail
-          SERVICE_URL="$(gcloud run services describe "${SERVICE}" \
-            --project="${PROJECT_ID}" \
-            --region="${REGION}" \
-            --format='value(status.url)')"
-          # Exact URL, no trailing slash
+          echo "::add-mask::${ID_TOKEN}"
+          # Exact URL, no trailing slash (must match the token audience)
           SERVICE_URL="${SERVICE_URL%/}"
-          TOKEN="$(gcloud auth print-identity-token --audiences="${SERVICE_URL}")"
-          echo "::add-mask::${TOKEN}"
           HTTP_CODE="$(curl -sS -o /tmp/ingest-body.json -w '%{http_code}' \
             -X POST "${SERVICE_URL}/api/ingest" \
-            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Authorization: Bearer ${ID_TOKEN}" \
             -H "Content-Type: application/json")"
           if [[ "${HTTP_CODE}" != "200" ]]; then
             echo "ingest failed with HTTP ${HTTP_CODE}"

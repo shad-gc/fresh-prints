@@ -126,14 +126,19 @@ See **[SETUP.md](./SETUP.md)** for the Cloud Shell commands: APIs, Artifact
 Registry, deployer SA, secrets (`printf`, never `echo`), GCS bucket, OAuth
 apps, and GitHub Actions variables/secrets.
 
-Required Actions **secret**: `GCP_SA_KEY`  
-Required Actions **variables**: `PROJECT_ID`, `REGION`, `GH_CLIENT_ID`,
-`ALLOWED_GITHUB_USERNAMES`, `ALLOWED_INVOKER_EMAILS`, `DIGEST_EMAIL_TO`,
-`DIGEST_EMAIL_FROM`, `APP_URL`, `CLOUD_RUN_SERVICE_URL`
+No Actions **secrets** are required — workflows authenticate to GCP via
+Workload Identity Federation (keyless).  
+Required Actions **variables**: `PROJECT_ID`, `REGION`, `WIF_PROVIDER`,
+`WIF_SERVICE_ACCOUNT`, `GH_CLIENT_ID`, `ALLOWED_GITHUB_USERNAMES`,
+`ALLOWED_INVOKER_EMAILS`, `DIGEST_EMAIL_TO`, `DIGEST_EMAIL_FROM`, `APP_URL`,
+`CLOUD_RUN_SERVICE_URL`
 
 ## Security notes (public repo)
 
 - No personal data in committed files.
+- No long-lived credentials in GitHub: Actions uses Workload Identity
+  Federation (OIDC token exchange, restricted to this repo by an attribute
+  condition) instead of exported service-account keys.
 - Workflows mask identity tokens with `::add-mask::` before any step that
   could print them; failed job logs do not dump response bodies.
 - Cloud Run is `--allow-unauthenticated`; the app enforces GitHub OAuth for

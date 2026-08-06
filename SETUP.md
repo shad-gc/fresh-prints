@@ -20,8 +20,12 @@ gcloud services enable \
   artifactregistry.googleapis.com \
   secretmanager.googleapis.com \
   storage.googleapis.com \
+  iamcredentials.googleapis.com \
+  sts.googleapis.com \
   --project="${PROJECT_ID}"
 ```
+
+(`iamcredentials` + `sts` are for Workload Identity Federation in step 6.)
 
 ## 2. Artifact Registry repository
 
@@ -118,33 +122,62 @@ gcloud storage buckets add-iam-policy-binding "gs://${BUCKET}" \
   --role="roles/storage.objectAdmin"
 ```
 
-## 6. SA key → GitHub secret → delete local key
+## 6. Workload Identity Federation (keyless — no SA keys anywhere)
+
+GitHub Actions authenticates by exchanging its OIDC token for GCP credentials.
+Nothing long-lived is stored in GitHub.
 
 ```bash
-gcloud iam service-accounts keys create ./sa-key.json \
-  --iam-account="${SA_EMAIL}" \
-  --project="${PROJECT_ID}"
+GITHUB_REPO='[GITHUB_OWNER]/[REPO_NAME]'   # e.g. yourname/fresh-prints
+PROJECT_NUMBER="$(gcloud projects describe "${PROJECT_ID}" --format='value(projectNumber)')"
 
-# GitHub → Settings → Secrets and variables → Actions → New repository secret
-# Name: GCP_SA_KEY
-# Value: entire contents of sa-key.json
+gcloud iam workload-identity-pools create github \
+  --project="${PROJECT_ID}" \
+  --location=global \
+  --display-name="GitHub Actions"
 
-rm -f ./sa-key.json
+# The attribute condition restricts token exchange to THIS repo — do not skip it.
+gcloud iam workload-identity-pools providers create-oidc github-provider \
+  --project="${PROJECT_ID}" \
+  --location=global \
+  --workload-identity-pool=github \
+  --display-name="GitHub OIDC" \
+  --issuer-uri="https://token.actions.githubusercontent.com" \
+  --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" \
+  --attribute-condition="assertion.repository == '${GITHUB_REPO}'"
+
+# Let this repo's workflows impersonate the deployer SA.
+# workloadIdentityUser = act as the SA; serviceAccountTokenCreator = mint the
+# ID tokens that ingest.yml / publish.yml send to the app.
+PRINCIPAL="principalSet://iam.googleapis.com/projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/attribute.repository/${GITHUB_REPO}"
+
+for ROLE in roles/iam.workloadIdentityUser roles/iam.serviceAccountTokenCreator; do
+  gcloud iam service-accounts add-iam-policy-binding "${SA_EMAIL}" \
+    --project="${PROJECT_ID}" \
+    --member="${PRINCIPAL}" \
+    --role="${ROLE}"
+done
+
+# Value for the WIF_PROVIDER Actions variable:
+echo "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider"
 ```
 
-Also create these **repository Variables** (Settings → Secrets and variables → Actions → Variables):
+Create these **repository Variables** (Settings → Secrets and variables → Actions → Variables).
+No Actions secrets are needed.
 
 | Variable | Example / notes |
 |---|---|
 | `PROJECT_ID` | your GCP project id |
 | `REGION` | e.g. `us-west1` |
+| `WIF_PROVIDER` | `projects/[PROJECT_NUMBER]/locations/global/workloadIdentityPools/github/providers/github-provider` (echoed above) |
+| `WIF_SERVICE_ACCOUNT` | `github-deployer@[PROJECT_ID].iam.gserviceaccount.com` |
 | `GH_CLIENT_ID` | prod OAuth app client id |
 | `ALLOWED_GITHUB_USERNAMES` | comma-separated GitHub usernames |
 | `ALLOWED_INVOKER_EMAILS` | `github-deployer@[PROJECT_ID].iam.gserviceaccount.com` — SA emails allowed to call ingest/publish |
 | `DIGEST_EMAIL_TO` | your inbox |
 | `DIGEST_EMAIL_FROM` | verified Resend sender, e.g. `Fresh Prints <digest@yourdomain.com>` |
 | `APP_URL` | Cloud Run service URL (no trailing slash) |
-| `CLOUD_RUN_SERVICE_URL` | same as `APP_URL` (identity-token audience) |
+| `CLOUD_RUN_SERVICE_URL` | same as `APP_URL` (identity-token audience — no trailing slash, must match exactly) |
 
 ## 7. GitHub OAuth apps (two apps — one callback URL each)
 
