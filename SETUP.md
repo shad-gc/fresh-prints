@@ -25,7 +25,10 @@ gcloud services enable \
   --project="${PROJECT_ID}"
 ```
 
-(`iamcredentials` + `sts` are for Workload Identity Federation in step 6.)
+`iamcredentials.googleapis.com` (IAM Service Account Credentials API) is
+required for Workload Identity Federation impersonation — without it, WIF
+token exchange fails with an unauthenticated error at Artifact Registry push.
+`sts.googleapis.com` performs the OIDC token exchange itself (step 6).
 
 ## 2. Artifact Registry repository
 
@@ -162,8 +165,11 @@ done
 echo "projects/${PROJECT_NUMBER}/locations/global/workloadIdentityPools/github/providers/github-provider"
 ```
 
-Create these **repository Variables** (Settings → Secrets and variables → Actions → Variables).
-No Actions secrets are needed.
+Create these **repository Variables** in the **Variables tab**
+(Settings → Secrets and variables → Actions → **Variables** — not the Secrets
+tab). All non-sensitive config lives here. The **Secrets tab should be empty**
+for this project: workflows authenticate keylessly via WIF, and runtime
+secrets live in GCP Secret Manager (step 4).
 
 | Variable | Example / notes |
 |---|---|
