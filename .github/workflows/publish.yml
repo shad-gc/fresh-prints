@@ -23,11 +23,13 @@ jobs:
       # containing quotes cannot break the shell.
       - name: "Preflight: validate required variables"
         env:
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
           WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
           WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
           CLOUD_RUN_SERVICE_URL: ${{ vars.CLOUD_RUN_SERVICE_URL }}
         run: |
           missing=()
+          [ -z "${PROJECT_ID}" ] && missing+=("PROJECT_ID")
           [ -z "${WIF_PROVIDER}" ] && missing+=("WIF_PROVIDER")
           [ -z "${WIF_SERVICE_ACCOUNT}" ] && missing+=("WIF_SERVICE_ACCOUNT")
           [ -z "${CLOUD_RUN_SERVICE_URL}" ] && missing+=("CLOUD_RUN_SERVICE_URL")
@@ -44,6 +46,7 @@ jobs:
         id: auth
         uses: google-github-actions/auth@v2
         with:
+          project_id: ${{ vars.PROJECT_ID }}
           workload_identity_provider: ${{ vars.WIF_PROVIDER }}
           service_account: ${{ vars.WIF_SERVICE_ACCOUNT }}
           token_format: id_token
