@@ -19,6 +19,27 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      # vars are mapped via env (not inlined into the script) so values
+      # containing quotes cannot break the shell.
+      - name: "Preflight: validate required variables"
+        env:
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          CLOUD_RUN_SERVICE_URL: ${{ vars.CLOUD_RUN_SERVICE_URL }}
+        run: |
+          missing=()
+          [ -z "${WIF_PROVIDER}" ] && missing+=("WIF_PROVIDER")
+          [ -z "${WIF_SERVICE_ACCOUNT}" ] && missing+=("WIF_SERVICE_ACCOUNT")
+          [ -z "${CLOUD_RUN_SERVICE_URL}" ] && missing+=("CLOUD_RUN_SERVICE_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub Actions VARIABLES (Settings → Secrets and variables → Actions → VARIABLES tab, not Secrets): ${missing[*]}"
+            exit 1
+          fi
+          case "${CLOUD_RUN_SERVICE_URL}" in
+            */) echo "::error::CLOUD_RUN_SERVICE_URL must not end with a trailing slash — the ID token audience must exactly match the app's normalized URL."; exit 1 ;;
+          esac
+          echo "All required variables present."
+
       - name: Authenticate to Google Cloud (Workload Identity Federation)
         id: auth
         uses: google-github-actions/auth@v2

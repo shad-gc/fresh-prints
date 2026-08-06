@@ -19,6 +19,40 @@ jobs:
       BUCKET: ${{ vars.PROJECT_ID }}-fresh-prints-db
 
     steps:
+      # vars are mapped via env (not inlined into the script) so values
+      # containing quotes cannot break the shell.
+      - name: "Preflight: validate required variables"
+        env:
+          PROJECT_ID: ${{ vars.PROJECT_ID }}
+          REGION: ${{ vars.REGION }}
+          WIF_PROVIDER: ${{ vars.WIF_PROVIDER }}
+          WIF_SERVICE_ACCOUNT: ${{ vars.WIF_SERVICE_ACCOUNT }}
+          ALLOWED_INVOKER_EMAILS: ${{ vars.ALLOWED_INVOKER_EMAILS }}
+          ALLOWED_GITHUB_USERNAMES: ${{ vars.ALLOWED_GITHUB_USERNAMES }}
+          DIGEST_EMAIL_TO: ${{ vars.DIGEST_EMAIL_TO }}
+          DIGEST_EMAIL_FROM: ${{ vars.DIGEST_EMAIL_FROM }}
+          GH_CLIENT_ID: ${{ vars.GH_CLIENT_ID }}
+          APP_URL: ${{ vars.APP_URL }}
+          CLOUD_RUN_SERVICE_URL: ${{ vars.CLOUD_RUN_SERVICE_URL }}
+        run: |
+          missing=()
+          [ -z "${PROJECT_ID}" ] && missing+=("PROJECT_ID")
+          [ -z "${REGION}" ] && missing+=("REGION")
+          [ -z "${WIF_PROVIDER}" ] && missing+=("WIF_PROVIDER")
+          [ -z "${WIF_SERVICE_ACCOUNT}" ] && missing+=("WIF_SERVICE_ACCOUNT")
+          [ -z "${ALLOWED_INVOKER_EMAILS}" ] && missing+=("ALLOWED_INVOKER_EMAILS")
+          [ -z "${ALLOWED_GITHUB_USERNAMES}" ] && missing+=("ALLOWED_GITHUB_USERNAMES")
+          [ -z "${DIGEST_EMAIL_TO}" ] && missing+=("DIGEST_EMAIL_TO")
+          [ -z "${DIGEST_EMAIL_FROM}" ] && missing+=("DIGEST_EMAIL_FROM")
+          [ -z "${GH_CLIENT_ID}" ] && missing+=("GH_CLIENT_ID")
+          [ -z "${APP_URL}" ] && missing+=("APP_URL")
+          [ -z "${CLOUD_RUN_SERVICE_URL}" ] && missing+=("CLOUD_RUN_SERVICE_URL")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing GitHub Actions VARIABLES (Settings → Secrets and variables → Actions → VARIABLES tab, not Secrets): ${missing[*]}"
+            exit 1
+          fi
+          echo "All required variables present."
+
       - name: Checkout
         uses: actions/checkout@v4
 
