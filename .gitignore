@@ -1,0 +1,15 @@
+node_modules/
+client/node_modules/
+client/dist/
+.env
+.env.local
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+sa-key.json
+*.pem
+comics/
+.DS_Store
+dist/
+coverage/

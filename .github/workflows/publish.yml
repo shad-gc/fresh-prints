@@ -1,0 +1,59 @@
+name: Publish
+
+on:
+  schedule:
+    # 13:00 UTC ≈ 6am PDT (accept 1h winter drift)
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+    inputs:
+      edition_date:
+        description: 'Optional YYYY-MM-DD to (re)publish a specific date'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ vars.PROJECT_ID }}
+      REGION: ${{ vars.REGION }}
+      SERVICE: fresh-prints
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Call /api/publish with identity token
+        run: |
+          set -euo pipefail
+          SERVICE_URL="$(gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format='value(status.url)')"
+          SERVICE_URL="${SERVICE_URL%/}"
+          TOKEN="$(gcloud auth print-identity-token --audiences="${SERVICE_URL}")"
+          echo "::add-mask::${TOKEN}"
+
+          BODY='{}'
+          if [[ -n "${{ inputs.edition_date }}" ]]; then
+            BODY="$(jq -cn --arg d "${{ inputs.edition_date }}" '{edition_date:$d}')"
+          fi
+
+          HTTP_CODE="$(curl -sS -o /tmp/publish-body.json -w '%{http_code}' \
+            -X POST "${SERVICE_URL}/api/publish" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "${BODY}")"
+          if [[ "${HTTP_CODE}" != "200" ]]; then
+            echo "publish failed with HTTP ${HTTP_CODE}"
+            exit 1
+          fi
+          echo "publish ok (HTTP ${HTTP_CODE})"

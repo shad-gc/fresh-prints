@@ -1,0 +1,49 @@
+name: Ingest
+
+on:
+  schedule:
+    # Hourly
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ vars.PROJECT_ID }}
+      REGION: ${{ vars.REGION }}
+      SERVICE: fresh-prints
+
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Call /api/ingest with identity token
+        run: |
+          set -euo pipefail
+          SERVICE_URL="$(gcloud run services describe "${SERVICE}" \
+            --project="${PROJECT_ID}" \
+            --region="${REGION}" \
+            --format='value(status.url)')"
+          # Exact URL, no trailing slash
+          SERVICE_URL="${SERVICE_URL%/}"
+          TOKEN="$(gcloud auth print-identity-token --audiences="${SERVICE_URL}")"
+          echo "::add-mask::${TOKEN}"
+          HTTP_CODE="$(curl -sS -o /tmp/ingest-body.json -w '%{http_code}' \
+            -X POST "${SERVICE_URL}/api/ingest" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json")"
+          if [[ "${HTTP_CODE}" != "200" ]]; then
+            echo "ingest failed with HTTP ${HTTP_CODE}"
+            # Do not dump body — may contain titles/URLs; keep logs safe on a public repo
+            exit 1
+          fi
+          echo "ingest ok (HTTP ${HTTP_CODE})"
