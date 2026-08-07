@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router';
 import FrontPage from './pages/FrontPage.jsx';
 import EditionPage from './pages/Edition.jsx';
 import ArchivePage from './pages/Archive.jsx';
