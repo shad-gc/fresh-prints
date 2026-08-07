@@ -64,9 +64,15 @@ flowchart LR
    `sources`, upserts into `items`, then fuzzy-clusters cross-source dupes.
 2. `POST /api/publish` loads the last 24h of clusters, calls Claude with
    `prompts/edition.md` + a JSON tool schema, stores an `editions` row
-   (idempotent per date), and sends HTML email via Resend.
-3. The React app at `/` and `/edition/:date` renders the broadsheet. GitHub
-   OAuth (Passport) gates the UI; non-allowlisted users get a 403 page.
+   (idempotent per date), and sends HTML email via Resend. Concurrently with
+   the Claude call it snapshots a markets ticker (yahoo-finance2 — last close
+   + % change for four ETFs) and the San Francisco forecast (Open-Meteo, no
+   key). Both are stored on the edition so archived issues keep their day's
+   data; a failed fetch just omits that element and can never fail or delay
+   the publish.
+3. The React app renders the broadsheet at `/` and `/edition/:date`, with a
+   paginated Back Issues index at `/archive`. GitHub OAuth (Passport) gates
+   the UI; non-allowlisted users get a 403 page.
 
 ## Stack
 
@@ -77,6 +83,7 @@ flowchart LR
 | Frontend | React + Vite in `client/` |
 | LLM | Anthropic SDK · `claude-sonnet-4-5` |
 | Email | Resend |
+| Markets / weather | yahoo-finance2 + Open-Meteo, snapshotted at publish |
 | Auth | Passport GitHub OAuth + username allowlist |
 | Sessions | SQLite via `better-sqlite3` (single-instance store) |
 | Jobs auth | GCP identity tokens (`google-auth-library`) |

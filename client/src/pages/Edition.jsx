@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fetchEdition } from '../api.js';
-import { EditionView } from './FrontPage.jsx';
+import Broadsheet from '../components/Broadsheet.jsx';
 
 export default function EditionPage() {
   const { date } = useParams();
@@ -30,15 +30,20 @@ export default function EditionPage() {
     return (
       <div className="sheet">
         <header className="masthead">
-          <h1 className="masthead__brand">Fresh Prints</h1>
-          <p className="masthead__banner">No edition for {date}.</p>
+          <div className="masthead__row">
+            <div className="ear ear--empty" aria-hidden="true" />
+            <span className="brand">Fresh Prints</span>
+            <div className="ear ear--empty" aria-hidden="true" />
+          </div>
+          <div className="rule-thickthin" />
+          <p className="deck">No edition for {date}.</p>
         </header>
         <p className="empty">
-          <Link to="/">Back to the front page</Link>
+          <Link to="/archive">Back Issues</Link> · <Link to="/">Front page</Link>
         </p>
       </div>
     );
   }
 
-  return <EditionView edition={edition} />;
+  return <Broadsheet edition={edition} />;
 }

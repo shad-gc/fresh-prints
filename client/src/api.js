@@ -11,3 +11,9 @@ export async function fetchEdition(date) {
   if (!res.ok) throw new Error(`Failed to load edition (${res.status})`);
   return res.json();
 }
+
+export async function fetchEditionList(page = 1) {
+  const res = await fetch(`/api/editions?page=${page}`);
+  if (!res.ok) throw new Error(`Failed to load archive (${res.status})`);
+  return res.json();
+}
