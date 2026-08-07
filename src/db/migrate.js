@@ -51,4 +51,15 @@ export function runMigrations(db) {
   if (!cols.includes('is_vendor')) {
     db.exec(`ALTER TABLE sources ADD COLUMN is_vendor INTEGER NOT NULL DEFAULT 0`);
   }
+
+  // v2: per-edition snapshots fetched at publish time. NULL on old editions
+  // means the ticker ribbon / weather ear simply don't render. ADD COLUMN is
+  // metadata-only in SQLite — safe on the GCS FUSE volume.
+  const editionCols = db.prepare(`PRAGMA table_info(editions)`).all().map((c) => c.name);
+  if (!editionCols.includes('ticker_json')) {
+    db.exec(`ALTER TABLE editions ADD COLUMN ticker_json TEXT`);
+  }
+  if (!editionCols.includes('weather_json')) {
+    db.exec(`ALTER TABLE editions ADD COLUMN weather_json TEXT`);
+  }
 }

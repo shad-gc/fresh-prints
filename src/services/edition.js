@@ -1,6 +1,7 @@
 import { getDb } from '../db/index.js';
 import { generateEdition } from './anthropic.js';
 import { sendEditionEmail } from './email.js';
+import { fetchTickerSnapshot } from './markets.js';
 
 /**
  * Build candidate clusters for the last 24h for the Claude prompt.
@@ -94,7 +95,13 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
     );
   }
 
+  // Snapshots run concurrently with Claude and can never fail the publish:
+  // the helpers catch internally and resolve null on any failure.
+  const tickerPromise = fetchTickerSnapshot();
+
   const { payload, model, input_tokens, output_tokens } = await generateEdition(candidates);
+
+  const ticker = await tickerPromise;
 
   const existing = db.prepare(`SELECT id, edition_number FROM editions WHERE edition_date = ?`).get(date);
   let editionNumber;
@@ -107,14 +114,15 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
 
   const createdAt = new Date().toISOString();
   db.prepare(
-    `INSERT INTO editions (edition_date, edition_number, payload_json, model, input_tokens, output_tokens, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)
+    `INSERT INTO editions (edition_date, edition_number, payload_json, model, input_tokens, output_tokens, created_at, ticker_json)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
      ON CONFLICT(edition_date) DO UPDATE SET
        payload_json = excluded.payload_json,
        model = excluded.model,
        input_tokens = excluded.input_tokens,
        output_tokens = excluded.output_tokens,
-       created_at = excluded.created_at`
+       created_at = excluded.created_at,
+       ticker_json = excluded.ticker_json`
   ).run(
     date,
     editionNumber,
@@ -122,7 +130,8 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
     model,
     input_tokens,
     output_tokens,
-    createdAt
+    createdAt,
+    ticker ? JSON.stringify(ticker) : null
   );
 
   let email = null;

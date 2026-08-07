@@ -63,6 +63,8 @@ function serializeEdition(row, db) {
     model: row.model,
     created_at: row.created_at,
     payload: JSON.parse(row.payload_json),
+    ticker: row.ticker_json ? JSON.parse(row.ticker_json) : null,
+    weather: row.weather_json ? JSON.parse(row.weather_json) : null,
     prev_date: adj.prev,
     next_date: adj.next,
   };
