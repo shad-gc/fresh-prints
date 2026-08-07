@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { formatDateline } from '../lib/format.js';
 import MarketsTicker from './MarketsTicker.jsx';
 import { WeatherEar, InfoEar } from './Ears.jsx';
