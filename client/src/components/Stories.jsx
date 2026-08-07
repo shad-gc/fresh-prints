@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { hostOf } from '../lib/format.js';
 
 function SourceSlugs({ urls }) {
@@ -5,10 +6,15 @@ function SourceSlugs({ urls }) {
   return (
     <span className="story__slugs">
       {urls.map((u, i) => (
-        <a key={u} href={u} target="_blank" rel="noreferrer" className="slug">
-          {hostOf(u)}
-          {i < urls.length - 1 ? '' : ''}
-        </a>
+        <Fragment key={u}>
+          {/* Breakable space BETWEEN the nowrap anchors — a space inside a
+              nowrap element is itself non-breaking, so consecutive slugs
+              would still form one unbreakable run and blow out the grid. */}
+          {i > 0 ? ' ' : ''}
+          <a href={u} target="_blank" rel="noreferrer" className="slug">
+            {hostOf(u)}
+          </a>
+        </Fragment>
       ))}
     </span>
   );
