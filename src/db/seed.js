@@ -171,6 +171,50 @@ const SOURCES = [
     min_points: null,
     is_vendor: 1,
   },
+
+  // v2: builder/operator sources for The Wire
+  {
+    name: 'Docker Blog',
+    type: 'rss',
+    url: 'https://www.docker.com/blog/feed/',
+    enabled: 1,
+    min_points: null,
+    is_vendor: 1,
+  },
+  {
+    name: 'HashiCorp Blog',
+    type: 'rss',
+    url: 'https://www.hashicorp.com/blog/feed.xml',
+    enabled: 1,
+    min_points: null,
+    is_vendor: 1,
+  },
+  {
+    name: 'Grafana Blog',
+    type: 'rss',
+    url: 'https://grafana.com/blog/index.xml',
+    enabled: 1,
+    min_points: null,
+    is_vendor: 1,
+  },
+  {
+    // Personal blog — same class as Simon Willison, not a vendor feed
+    name: 'Jeff Geerling',
+    type: 'rss',
+    url: 'https://www.jeffgeerling.com/blog.xml',
+    enabled: 1,
+    min_points: null,
+    is_vendor: 0,
+  },
+  {
+    // Forrest Brazeal's "Good Tech Things"
+    name: 'Good Tech Things',
+    type: 'rss',
+    url: 'https://www.goodtechthings.com/rss/',
+    enabled: 1,
+    min_points: null,
+    is_vendor: 0,
+  },
 ];
 
 export function seedSources(db) {
