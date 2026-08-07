@@ -65,7 +65,10 @@ jobs:
             -H "Content-Type: application/json")"
           if [[ "${HTTP_CODE}" != "200" ]]; then
             echo "ingest failed with HTTP ${HTTP_CODE}"
-            # Do not dump body — may contain titles/URLs; keep logs safe on a public repo
+            # Do not dump the full body — may contain titles/URLs; logs are
+            # public. Surface only the API's error field, truncated.
+            ERR="$(jq -r '.error // empty' /tmp/ingest-body.json 2>/dev/null | head -c 400 || true)"
+            echo "server error: ${ERR:-"(no error field / non-JSON response)"}"
             exit 1
           fi
           echo "ingest ok (HTTP ${HTTP_CODE})"
