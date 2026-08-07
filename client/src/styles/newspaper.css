@@ -201,6 +201,12 @@ a {
   margin-top: 1.3rem;
 }
 
+/* Grid items default to min-width:auto and can be forced wider than their
+   track by long unbreakable content — never let content blow out the sheet. */
+.body-grid > * {
+  min-width: 0;
+}
+
 .col--industry {
   border-left: 1px solid var(--colrule);
   border-right: 1px solid var(--colrule);
@@ -276,6 +282,7 @@ a {
   text-align: justify;
   hyphens: auto;
   -webkit-hyphens: auto;
+  overflow-wrap: break-word;
 }
 
 .story__body p {
