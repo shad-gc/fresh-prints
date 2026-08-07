@@ -44,3 +44,35 @@ export function formatArchiveDate(isoDate) {
     timeZone: 'UTC',
   });
 }
+
+/**
+ * Study-desk deadline formatting. Date-only values (all-day Canvas events)
+ * render without a time; datetimes render in the reader's local zone.
+ */
+export function formatDue(dueAt) {
+  const dateOnly = dueAt.length === 10;
+  const d = dateOnly ? new Date(`${dueAt}T12:00:00Z`) : new Date(dueAt);
+  const day = d.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    ...(dateOnly ? { timeZone: 'UTC' } : {}),
+  });
+  if (dateOnly) return day;
+  const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+  return `${day} · ${time}`;
+}
+
+/** "due today" / "due tomorrow" / "due in N days" */
+export function dueRelative(dueAt) {
+  const dateOnly = dueAt.length === 10;
+  const due = dateOnly ? new Date(`${dueAt}T12:00:00Z`) : new Date(dueAt);
+  const startOfDay = (dt) => new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+  const dueDay = dateOnly
+    ? new Date(due.getUTCFullYear(), due.getUTCMonth(), due.getUTCDate())
+    : startOfDay(due);
+  const days = Math.round((dueDay - startOfDay(new Date())) / 86_400_000);
+  if (days <= 0) return 'due today';
+  if (days === 1) return 'due tomorrow';
+  return `due in ${days} days`;
+}

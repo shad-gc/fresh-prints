@@ -39,5 +39,5 @@ export default function FrontPage() {
     );
   }
 
-  return <Broadsheet edition={edition} />;
+  return <Broadsheet edition={edition} isFrontPage />;
 }
