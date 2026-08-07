@@ -37,6 +37,30 @@ router.post('/publish', requireIdentityToken, async (req, res) => {
   }
 });
 
+const ARCHIVE_PAGE_SIZE = 30;
+
+router.get('/editions', (req, res) => {
+  const db = getDb();
+  const page = Math.max(1, Number.parseInt(req.query.page, 10) || 1);
+  const total = db.prepare(`SELECT COUNT(*) AS c FROM editions`).get().c;
+  const rows = db
+    .prepare(
+      `SELECT edition_number, edition_date,
+              json_extract(payload_json, '$.edition_title') AS deck
+       FROM editions
+       ORDER BY edition_date DESC
+       LIMIT ? OFFSET ?`
+    )
+    .all(ARCHIVE_PAGE_SIZE, (page - 1) * ARCHIVE_PAGE_SIZE);
+  res.json({
+    editions: rows,
+    page,
+    per_page: ARCHIVE_PAGE_SIZE,
+    total,
+    total_pages: Math.max(1, Math.ceil(total / ARCHIVE_PAGE_SIZE)),
+  });
+});
+
 router.get('/editions/latest', (req, res) => {
   const db = getDb();
   const row = getLatestEdition(db);
