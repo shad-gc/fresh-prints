@@ -62,4 +62,29 @@ export function runMigrations(db) {
   if (!editionCols.includes('weather_json')) {
     db.exec(`ALTER TABLE editions ADD COLUMN weather_json TEXT`);
   }
+
+  // PR B: Publisher's Desk + Study Desk
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS desk_settings (
+      key        TEXT PRIMARY KEY,
+      value      TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS grades (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      assignment TEXT NOT NULL,
+      score      TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS study_events (
+      uid        TEXT PRIMARY KEY,
+      title      TEXT NOT NULL,
+      due_at     TEXT NOT NULL,
+      fetched_at TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_study_events_due_at ON study_events(due_at);
+  `);
 }

@@ -4,13 +4,14 @@ import MarketsTicker from './MarketsTicker.jsx';
 import { WeatherEar, InfoEar } from './Ears.jsx';
 import { LeadStory, SecondStory, IndustryStory } from './Stories.jsx';
 import WireColumn from './WireColumn.jsx';
+import StudyDesk from './StudyDesk.jsx';
 
 /**
  * The full broadsheet template. Renders any edition — current or archived.
  * `edition.ticker` / `edition.weather` may be null (old editions, failed
  * fetches): those elements are simply absent.
  */
-export default function Broadsheet({ edition }) {
+export default function Broadsheet({ edition, isFrontPage = false }) {
   const { payload } = edition;
   const stories = payload.top_stories || [];
   const lead = stories[0];
@@ -72,13 +73,24 @@ export default function Broadsheet({ edition }) {
 
           <div className="col col--rail">
             <WireColumn items={payload.the_wire} />
+            {isFrontPage ? <StudyDesk /> : null}
           </div>
         </main>
 
         <footer className="colophon">
           <div className="rule-double" />
           <div className="colophon__row">
-            <span>Fresh Prints — printed by robots, read by one human</span>
+            <span>
+              Fresh Prints — printed by robots, read by one human
+              {isFrontPage ? (
+                <>
+                  {' · '}
+                  <Link to="/desk" className="colophon__desk">
+                    Publisher&apos;s Desk
+                  </Link>
+                </>
+              ) : null}
+            </span>
             <span>No. {edition.edition_number}</span>
           </div>
         </footer>

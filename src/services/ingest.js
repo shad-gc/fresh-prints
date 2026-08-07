@@ -3,6 +3,7 @@ import { fetchRss } from './rss.js';
 import { fetchHackerNews } from './hn.js';
 import { fetchReddit } from './reddit.js';
 import { clusterItems } from './cluster.js';
+import { refreshStudyEvents } from './studyDesk.js';
 
 const upsertItem = `
   INSERT INTO items (
@@ -73,10 +74,15 @@ export async function runIngest() {
   const cluster = clusterItems(db, touchedIds);
   const totalItems = db.prepare(`SELECT COUNT(*) AS c FROM items`).get().c;
 
+  // Piggyback the Canvas feed refresh on the hourly cycle. Never fatal —
+  // a broken ICS URL must not take down news ingestion.
+  const studyDesk = await refreshStudyEvents(db);
+
   return {
     sources: results.length,
     results,
     clustered: cluster.clusters,
     total_items: totalItems,
+    study_desk: studyDesk,
   };
 }

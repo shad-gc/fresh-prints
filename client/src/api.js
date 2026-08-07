@@ -17,3 +17,43 @@ export async function fetchEditionList(page = 1) {
   if (!res.ok) throw new Error(`Failed to load archive (${res.status})`);
   return res.json();
 }
+
+// ---------- Publisher's Desk ----------
+
+async function jsonOrThrow(res) {
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
+}
+
+export async function fetchStudyDesk() {
+  return jsonOrThrow(await fetch('/api/study-desk'));
+}
+
+export async function fetchDesk() {
+  return jsonOrThrow(await fetch('/api/desk'));
+}
+
+export async function saveDeskSettings(patch) {
+  return jsonOrThrow(
+    await fetch('/api/desk/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    })
+  );
+}
+
+export async function addGrade(assignment, score) {
+  return jsonOrThrow(
+    await fetch('/api/desk/grades', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ assignment, score }),
+    })
+  );
+}
+
+export async function deleteGrade(id) {
+  return jsonOrThrow(await fetch(`/api/desk/grades/${id}`, { method: 'DELETE' }));
+}
