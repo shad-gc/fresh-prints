@@ -196,8 +196,8 @@ a {
 
 .body-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1.08fr;
-  gap: 0 1.5rem;
+  grid-template-columns: 2.2fr 1fr;
+  gap: 0 1.6rem;
   margin-top: 1.3rem;
 }
 
@@ -207,10 +207,13 @@ a {
   min-width: 0;
 }
 
-.col--industry {
+.col--rail {
   border-left: 1px solid var(--colrule);
-  border-right: 1px solid var(--colrule);
-  padding: 0 1.4rem;
+  padding-left: 1.6rem;
+}
+
+.industry-section {
+  margin-top: 1.7rem;
 }
 
 .section-head {
@@ -263,7 +266,7 @@ a {
 
 .story__hl--second,
 .story__hl--industry {
-  font-size: 19.5px;
+  font-size: 21px;
   line-height: 1.18;
 }
 
@@ -271,17 +274,18 @@ a {
   font-family: var(--display);
   font-style: italic;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 1.05rem;
   color: var(--faded);
   margin: 0 0 0.7rem;
   line-height: 1.35;
 }
 
+/* v1 reading scale: bigger type, looser leading, ragged-right. The internal
+   two-column flow (below) keeps the measure near ~46ch per column. */
 .story__body {
-  font-size: 13.5px;
-  text-align: justify;
-  hyphens: auto;
-  -webkit-hyphens: auto;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  text-align: left;
   overflow-wrap: break-word;
 }
 
@@ -291,7 +295,7 @@ a {
 
 .story__body--columns {
   column-count: 2;
-  column-gap: 1.4rem;
+  column-gap: 1.6rem;
   column-rule: 1px solid var(--colrule);
 }
 
@@ -357,10 +361,9 @@ a {
 }
 
 .wire__list li {
-  font-size: 12.5px;
-  line-height: 1.42;
-  text-align: justify;
-  hyphens: auto;
+  font-size: 12.8px;
+  line-height: 1.45;
+  text-align: left;
   padding: 0.5rem 0;
   border-bottom: 1px dotted var(--colrule);
 }
@@ -542,10 +545,9 @@ a {
     gap: 1.4rem 0;
   }
 
-  .col--industry {
+  .col--rail {
     border-left: none;
-    border-right: none;
-    padding: 0;
+    padding-left: 0;
   }
 }
 

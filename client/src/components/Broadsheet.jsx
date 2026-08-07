@@ -46,27 +46,29 @@ export default function Broadsheet({ edition }) {
         </header>
 
         <main className="body-grid">
-          <section className="col col--lead" aria-labelledby="top-heading">
-            <h2 id="top-heading" className="section-head">
-              Top Stories
-            </h2>
-            {lead ? <LeadStory story={lead} /> : null}
-            {second ? (
-              <>
-                <div className="rule-ink" />
-                <SecondStory story={second} />
-              </>
-            ) : null}
-          </section>
+          <div className="col col--main">
+            <section aria-labelledby="top-heading">
+              <h2 id="top-heading" className="section-head">
+                Top Stories
+              </h2>
+              {lead ? <LeadStory story={lead} /> : null}
+              {second ? (
+                <>
+                  <div className="rule-ink" />
+                  <SecondStory story={second} />
+                </>
+              ) : null}
+            </section>
 
-          <section className="col col--industry" aria-labelledby="industry-heading">
-            <h2 id="industry-heading" className="section-head">
-              The Industry
-            </h2>
-            {industry.map((s) => (
-              <IndustryStory key={s.headline} story={s} />
-            ))}
-          </section>
+            <section className="industry-section" aria-labelledby="industry-heading">
+              <h2 id="industry-heading" className="section-head">
+                The Industry
+              </h2>
+              {industry.map((s) => (
+                <IndustryStory key={s.headline} story={s} />
+              ))}
+            </section>
+          </div>
 
           <div className="col col--rail">
             <WireColumn items={payload.the_wire} />

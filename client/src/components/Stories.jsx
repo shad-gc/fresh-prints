@@ -3,9 +3,18 @@ import { hostOf } from '../lib/format.js';
 
 function SourceSlugs({ urls }) {
   if (!urls?.length) return null;
+  // Dedupe by hostname for display: a story citing five articles from the
+  // same outlet renders ONE slug (linking the first URL), like a real paper.
+  const seen = new Set();
+  const unique = urls.filter((u) => {
+    const host = hostOf(u);
+    if (seen.has(host)) return false;
+    seen.add(host);
+    return true;
+  });
   return (
     <span className="story__slugs">
-      {urls.map((u, i) => (
+      {unique.map((u, i) => (
         <Fragment key={u}>
           {/* Breakable space BETWEEN the nowrap anchors — a space inside a
               nowrap element is itself non-breaking, so consecutive slugs
@@ -100,7 +109,9 @@ export function IndustryStory({ story }) {
           story.headline
         )}
       </h2>
-      <StoryBody story={story} />
+      {/* Two-column flow: in the wide main column, a single column of body
+          text would run ~95ch — the internal columns keep a ~46ch measure. */}
+      <StoryBody story={story} columns />
     </article>
   );
 }
