@@ -3,6 +3,8 @@ import { generateEdition } from './anthropic.js';
 import { sendEditionEmail } from './email.js';
 import { fetchTickerSnapshot } from './markets.js';
 import { fetchWeatherSnapshot } from './weather.js';
+import { getDeskSettings, certSlug } from './studyDesk.js';
+import { assignQuestionForEdition } from './examiner.js';
 
 /**
  * Build candidate clusters for the last 24h for the Claude prompt.
@@ -138,6 +140,16 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
     weather ? JSON.stringify(weather) : null
   );
 
+  // Pin the day's Examiner question. Wrapped because a dry or wedged bank
+  // must never fail a publish — the box simply doesn't render.
+  let puzzle = null;
+  try {
+    const slug = certSlug(getDeskSettings(db).active_cert);
+    puzzle = assignQuestionForEdition(db, date, slug);
+  } catch (err) {
+    console.error('[publish] examiner assignment skipped:', err.message || err);
+  }
+
   let email = null;
   if (sendEmail) {
     email = await sendEditionEmail({
@@ -158,6 +170,7 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
     output_tokens,
     replaced: !!existing,
     email_id: email?.id || null,
+    puzzle_question_id: puzzle?.id || null,
   };
 }
 
