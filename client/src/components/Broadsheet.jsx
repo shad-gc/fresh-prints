@@ -5,6 +5,7 @@ import { WeatherEar, InfoEar } from './Ears.jsx';
 import { LeadStory, SecondStory, IndustryStory } from './Stories.jsx';
 import WireColumn from './WireColumn.jsx';
 import StudyDesk from './StudyDesk.jsx';
+import Examiner from './Examiner.jsx';
 
 /**
  * The full broadsheet template. Renders any edition — current or archived.
@@ -74,6 +75,7 @@ export default function Broadsheet({ edition, isFrontPage = false }) {
           <div className="col col--rail">
             <WireColumn items={payload.the_wire} />
             {isFrontPage ? <StudyDesk /> : null}
+            {isFrontPage ? <Examiner editionDate={edition.edition_date} /> : null}
           </div>
         </main>
 
