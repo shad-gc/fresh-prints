@@ -1,14 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router';
-import {
-  fetchDesk,
-  saveDeskSettings,
-  addGrade,
-  deleteGrade,
-  fetchQuestionBank,
-  reviewQuestion,
-  draftQuestions,
-} from '../api.js';
+import { fetchDesk, saveDeskSettings, addGrade, deleteGrade } from '../api.js';
 import { formatDue } from '../lib/format.js';
 
 /**
@@ -30,11 +22,6 @@ export default function DeskPage() {
   const [assignment, setAssignment] = useState('');
   const [score, setScore] = useState('');
 
-  // Question bank
-  const [bank, setBank] = useState(undefined);
-  const [bankStatus, setBankStatus] = useState('draft');
-  const [drafting, setDrafting] = useState(false);
-
   useEffect(() => {
     fetchDesk()
       .then((data) => {
@@ -46,51 +33,6 @@ export default function DeskPage() {
       })
       .catch((err) => setError(err.message));
   }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchQuestionBank(bankStatus)
-      .then((data) => {
-        if (!cancelled) setBank(data);
-      })
-      .catch(() => {
-        if (!cancelled) setBank(null);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [bankStatus]);
-
-  async function reloadBank() {
-    try {
-      setBank(await fetchQuestionBank(bankStatus));
-    } catch {
-      /* keep the last good view */
-    }
-  }
-
-  async function handleReview(id, status) {
-    try {
-      await reviewQuestion(id, status);
-      await reloadBank();
-    } catch (err) {
-      flash(`Error: ${err.message}`);
-    }
-  }
-
-  async function handleDraft() {
-    setDrafting(true);
-    try {
-      const res = await draftQuestions(25);
-      flash(`Drafted ${res.drafted} questions for review.`);
-      setBankStatus('draft');
-      await reloadBank();
-    } catch (err) {
-      flash(`Drafting failed: ${err.message}`);
-    } finally {
-      setDrafting(false);
-    }
-  }
 
   function flash(msg) {
     setStatus(msg);
@@ -200,98 +142,8 @@ export default function DeskPage() {
           </button>
         </div>
         <p className="desk-hint">
-          The Examiner prints one question for the active cert with every edition, drawn from
-          the approved bank below.
+          Question banks and study prompts for the active cert arrive with the Daily Puzzle.
         </p>
-      </section>
-
-      <section className="desk-sec">
-        <h2>Question Bank{bank?.cert ? ` — ${bank.cert}` : ''}</h2>
-        <div className="desk-field qb-toolbar">
-          <div className="qb-tabs" role="tablist">
-            {['draft', 'approved', 'rejected'].map((s) => (
-              <button
-                key={s}
-                type="button"
-                className={`qb-tab${bankStatus === s ? ' qb-tab--on' : ''}`}
-                onClick={() => setBankStatus(s)}
-              >
-                {s} {bank?.counts ? `(${bank.counts[s]})` : ''}
-              </button>
-            ))}
-          </div>
-          <button type="button" onClick={handleDraft} disabled={drafting}>
-            {drafting ? 'Drafting…' : 'Draft 25 more'}
-          </button>
-        </div>
-        <p className="desk-hint">
-          Drafts are machine-written in a batch and print only after you approve them here.
-          The Examiner picks the approved question that has waited longest.
-        </p>
-        {bank === undefined ? (
-          <p className="desk-hint">Opening the bank…</p>
-        ) : bank === null ? (
-          <p className="desk-hint">The bank didn&apos;t open. Reload the page to retry.</p>
-        ) : bank.questions.length === 0 ? (
-          <p className="desk-hint">
-            {bankStatus === 'draft'
-              ? 'No drafts waiting. Draft a batch when the approved pile runs low.'
-              : `Nothing ${bankStatus} yet.`}
-          </p>
-        ) : (
-          <ul className="qb-list">
-            {bank.questions.map((q) => (
-              <li key={q.id} className="qb-item">
-                <p className="qb-item__meta">
-                  No. {q.id}
-                  {q.domain ? ` · ${q.domain}` : ''}
-                  {q.answer_indices.length > 1 ? ' · multi-select' : ''}
-                </p>
-                <p className="qb-item__prompt">{q.prompt}</p>
-                <ol className="qb-item__choices" type="A">
-                  {q.choices.map((c, i) => (
-                    <li key={c} className={q.answer_indices.includes(i) ? 'qb-right' : ''}>
-                      {c}
-                    </li>
-                  ))}
-                </ol>
-                <p className="qb-item__explain">{q.explanation}</p>
-                {q.source_url ? (
-                  <a className="qb-item__source" href={q.source_url} target="_blank" rel="noreferrer">
-                    {q.source_url}
-                  </a>
-                ) : (
-                  <p className="qb-item__source qb-item__source--none">No source cited.</p>
-                )}
-                <div className="qb-item__actions">
-                  {q.status !== 'approved' ? (
-                    <button type="button" onClick={() => handleReview(q.id, 'approved')}>
-                      Approve
-                    </button>
-                  ) : null}
-                  {q.status !== 'rejected' ? (
-                    <button
-                      type="button"
-                      className="qb-reject"
-                      onClick={() => handleReview(q.id, 'rejected')}
-                    >
-                      Reject
-                    </button>
-                  ) : null}
-                  {q.status === 'approved' ? (
-                    <button
-                      type="button"
-                      className="qb-reject"
-                      onClick={() => handleReview(q.id, 'retired')}
-                    >
-                      Retire
-                    </button>
-                  ) : null}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
       <section className="desk-sec">

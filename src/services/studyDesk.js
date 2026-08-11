@@ -13,30 +13,12 @@ const SETTING_KEYS = ['active_cert', 'cert_list', 'current_class', 'canvas_ics_u
 
 /** Certs seeded into the selector until the user saves their own list. */
 export const DEFAULT_CERT_LIST = [
-  'Associate Google Workspace Administrator',
   'GCP Associate Cloud Engineer',
   'Okta Certified Professional',
   'Okta Certified Administrator',
   'GCP Professional Cloud Architect',
   'Jamf 100',
 ];
-
-/** Cert shown until one is chosen at the desk. */
-export const DEFAULT_ACTIVE_CERT = 'Associate Google Workspace Administrator';
-
-/**
- * Stable slug for a cert's display name, used as the question bank's
- * partition key. Renaming a cert in the desk list would orphan its bank,
- * so this stays a pure function of the name — no stored ids to migrate.
- */
-export function certSlug(certName) {
-  const name = (certName || DEFAULT_ACTIVE_CERT).trim();
-  if (!name) return null;
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 // Keep future events plus a month of history; hard cap for pathological feeds.
 const PAST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
