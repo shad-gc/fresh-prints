@@ -8,7 +8,7 @@
  * overlap is what broke reads (SQLITE_IOERR_READ) in the Aug 10 incident.
  * Bump SCHEMA_VERSION whenever a statement below changes.
  */
-export const SCHEMA_VERSION = 4; // 1: base, 2: ticker/weather, 3: desk, 4: examiner
+export const SCHEMA_VERSION = 5; // 1: base, 2: ticker/weather, 3: desk, 4: examiner, 5: desk removed
 
 export function runMigrations(db) {
   const current = db.pragma('user_version', { simple: true });
@@ -75,21 +75,10 @@ export function runMigrations(db) {
     db.exec(`ALTER TABLE editions ADD COLUMN weather_json TEXT`);
   }
 
-  // PR B: Publisher's Desk + Study Desk
+  // PR B: Study Desk (the desk_settings and grades tables that shipped with
+  // the Publisher's Desk were dropped in v5 — class, cert, and grades now
+  // live in content/desk.json and the ICS URL in Secret Manager).
   db.exec(`
-    CREATE TABLE IF NOT EXISTS desk_settings (
-      key        TEXT PRIMARY KEY,
-      value      TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS grades (
-      id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      assignment TEXT NOT NULL,
-      score      TEXT NOT NULL,
-      created_at TEXT NOT NULL
-    );
-
     CREATE TABLE IF NOT EXISTS study_events (
       uid        TEXT PRIMARY KEY,
       title      TEXT NOT NULL,
@@ -118,7 +107,8 @@ export function runMigrations(db) {
       created_at     TEXT NOT NULL,
       reviewed_at    TEXT,
       times_used     INTEGER NOT NULL DEFAULT 0,
-      last_used_on   TEXT
+      last_used_on   TEXT,
+      content_key    TEXT
     );
 
     -- Drives the least-recently-used pick at publish time.
@@ -141,6 +131,22 @@ export function runMigrations(db) {
       was_correct  INTEGER,
       answered_at  TEXT NOT NULL
     );
+  `);
+
+  // v5: repo-file question bank. content_key ties a DB row to its entry in
+  // content/examiner-questions.json; the desk-era tables go away. The ALTER
+  // is conditional because DBs created before v5 lack the column while the
+  // CREATE TABLE above now includes it.
+  const pqCols = db.pragma(`table_info(puzzle_questions)`).map((c) => c.name);
+  if (!pqCols.includes('content_key')) {
+    db.exec(`ALTER TABLE puzzle_questions ADD COLUMN content_key TEXT`);
+  }
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_pq_content_key
+      ON puzzle_questions(content_key) WHERE content_key IS NOT NULL;
+
+    DROP TABLE IF EXISTS desk_settings;
+    DROP TABLE IF EXISTS grades;
   `);
 
   db.pragma(`user_version = ${SCHEMA_VERSION}`);

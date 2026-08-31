@@ -18,7 +18,7 @@ export async function fetchEditionList(page = 1) {
   return res.json();
 }
 
-// ---------- Publisher's Desk ----------
+// ---------- Study Desk ----------
 
 async function jsonOrThrow(res) {
   const body = await res.json().catch(() => ({}));
@@ -28,34 +28,6 @@ async function jsonOrThrow(res) {
 
 export async function fetchStudyDesk() {
   return jsonOrThrow(await fetch('/api/study-desk'));
-}
-
-export async function fetchDesk() {
-  return jsonOrThrow(await fetch('/api/desk'));
-}
-
-export async function saveDeskSettings(patch) {
-  return jsonOrThrow(
-    await fetch('/api/desk/settings', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(patch),
-    })
-  );
-}
-
-export async function addGrade(assignment, score) {
-  return jsonOrThrow(
-    await fetch('/api/desk/grades', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ assignment, score }),
-    })
-  );
-}
-
-export async function deleteGrade(id) {
-  return jsonOrThrow(await fetch(`/api/desk/grades/${id}`, { method: 'DELETE' }));
 }
 
 // ---------- The Examiner ----------
@@ -73,30 +45,6 @@ export async function submitPuzzleAttempt(date, chosen) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ chosen }),
-    })
-  );
-}
-
-export async function fetchQuestionBank(status = 'draft') {
-  return jsonOrThrow(await fetch(`/api/desk/questions?status=${encodeURIComponent(status)}`));
-}
-
-export async function reviewQuestion(id, status) {
-  return jsonOrThrow(
-    await fetch(`/api/desk/questions/${id}/review`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-  );
-}
-
-export async function draftQuestions(count = 25) {
-  return jsonOrThrow(
-    await fetch('/api/desk/questions/draft', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ count }),
     })
   );
 }

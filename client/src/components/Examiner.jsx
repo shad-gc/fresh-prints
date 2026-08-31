@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
 import { fetchPuzzle, submitPuzzleAttempt } from '../api.js';
 
 const LETTERS = ['A', 'B', 'C', 'D'];
@@ -168,10 +167,7 @@ export function ExaminerEmpty() {
         The Examiner
       </h2>
       <div className="deskbox__body">
-        <p className="desk-empty">
-          The bank is dry. Approve questions at the{' '}
-          <Link to="/desk">Publisher&apos;s Desk</Link> and the Examiner returns tomorrow.
-        </p>
+        <p className="desk-empty">The bank is dry. The Examiner returns tomorrow.</p>
       </div>
     </section>
   );

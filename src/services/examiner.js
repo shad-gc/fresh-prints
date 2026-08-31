@@ -2,8 +2,9 @@
  * The Examiner: one certification question per edition.
  *
  * Design rules, all of them load-bearing:
- *   - Questions are never generated at request time. They are batch-drafted
- *     behind a dispatch, reviewed by a human, and only then eligible.
+ *   - Questions are never generated at request time. They live in
+ *     content/examiner-questions.json, reviewed as a pull request diff, and
+ *     sync into the bank at publish — the only writer, once a day.
  *   - The question is pinned at publish, not at page load, so an archived
  *     edition keeps the question it actually printed with.
  *   - The streak is derived from attempts, never stored. A stored counter
@@ -12,16 +13,19 @@
  *     means no box.
  */
 
-import { CERT_BLUEPRINTS } from './questionWriter.js';
+import { getExaminerQuestions } from './content.js';
 
 const MAX_STREAK_SCAN = 400;
 
-/** Display name for a cert slug; falls back to de-hyphenated slug. */
+/** Display names for known cert slugs; falls back to de-hyphenated slug. */
+const CERT_NAMES = {
+  'associate-google-workspace-administrator': 'Associate Google Workspace Administrator',
+  'gcp-associate-cloud-engineer': 'GCP Associate Cloud Engineer',
+};
+
 function certDisplayName(slug) {
   if (!slug) return null;
-  const known = CERT_BLUEPRINTS[slug];
-  if (known) return known.name;
-  return slug.replace(/-/g, ' ');
+  return CERT_NAMES[slug] || slug.replace(/-/g, ' ');
 }
 
 /** Rows are stored as JSON strings; hand the client real arrays. */
@@ -245,81 +249,86 @@ export function recordAttempt(db, editionDate, chosen) {
   return { ok: true, view: getExaminerView(db, editionDate) };
 }
 
-/** Review queue for the Publisher's Desk, newest drafts first. */
-export function getQuestionBank(db, { certSlug, status = 'draft', limit = 50 } = {}) {
-  const params = [];
-  let sql = `SELECT * FROM puzzle_questions WHERE 1 = 1`;
-  if (certSlug) {
-    sql += ` AND cert_slug = ?`;
-    params.push(certSlug);
-  }
-  if (status && status !== 'all') {
-    sql += ` AND status = ?`;
-    params.push(status);
-  }
-  sql += ` ORDER BY id DESC LIMIT ?`;
-  params.push(Math.min(Number(limit) || 50, 200));
+/**
+ * Reconcile the bank with content/examiner-questions.json. Runs at publish,
+ * inside the day's single writer — never at boot, never on a request.
+ *
+ * File entries are the reviewed source of truth: new keys insert as
+ * 'approved', changed rows update in place, keys removed from the file
+ * retire (never delete — puzzle_assignments references rows forever).
+ * Rows without a content_key (the desk-drafting era) are left untouched.
+ * A clean diff performs zero writes.
+ */
+export function syncQuestionsFromContent(db) {
+  const questions = getExaminerQuestions();
+  const now = new Date().toISOString();
 
-  const rows = db.prepare(sql).all(...params);
+  const existing = db
+    .prepare(`SELECT * FROM puzzle_questions WHERE content_key IS NOT NULL`)
+    .all();
+  const byKey = new Map(existing.map((r) => [r.content_key, r]));
+  const fileKeys = new Set(questions.map((q) => q.key));
 
-  const counts = db
-    .prepare(
-      `SELECT status, COUNT(*) AS n FROM puzzle_questions
-       ${certSlug ? 'WHERE cert_slug = ?' : ''}
-       GROUP BY status`
-    )
-    .all(...(certSlug ? [certSlug] : []));
+  const toInsert = [];
+  const toUpdate = [];
+  for (const q of questions) {
+    const choices = JSON.stringify(q.choices);
+    const answers = JSON.stringify(q.answer_indices);
+    const source = q.source_url || null;
+    const row = byKey.get(q.key);
+    if (!row) {
+      toInsert.push({ q, choices, answers, source });
+    } else if (
+      row.cert_slug !== q.cert_slug ||
+      (row.domain || null) !== q.domain ||
+      row.prompt !== q.prompt ||
+      row.choices_json !== choices ||
+      row.answer_indices !== answers ||
+      row.explanation !== q.explanation ||
+      (row.source_url || null) !== source ||
+      row.status !== 'approved'
+    ) {
+      toUpdate.push({ q, choices, answers, source, id: row.id });
+    }
+  }
+  const toRetire = existing.filter((r) => !fileKeys.has(r.content_key) && r.status !== 'retired');
 
-  const tally = { draft: 0, approved: 0, rejected: 0, retired: 0 };
-  for (const row of counts) {
-    if (row.status in tally) tally[row.status] = row.n;
+  if (!toInsert.length && !toUpdate.length && !toRetire.length) {
+    return { inserted: 0, updated: 0, retired: 0, clean: true };
   }
 
-  return { questions: rows.map(hydrate), counts: tally };
-}
+  const insert = db.prepare(`
+    INSERT INTO puzzle_questions
+      (cert_slug, domain, prompt, choices_json, answer_indices, explanation,
+       source_url, status, created_at, reviewed_at, content_key)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', ?, ?, ?)
+  `);
+  const update = db.prepare(`
+    UPDATE puzzle_questions SET
+      cert_slug = ?, domain = ?, prompt = ?, choices_json = ?,
+      answer_indices = ?, explanation = ?, source_url = ?,
+      status = 'approved', reviewed_at = ?
+    WHERE id = ?
+  `);
+  const retire = db.prepare(
+    `UPDATE puzzle_questions SET status = 'retired', reviewed_at = ? WHERE id = ?`
+  );
 
-/** Approve, reject, or retire a reviewed draft. */
-export function reviewQuestion(db, id, status) {
-  if (!['approved', 'rejected', 'retired', 'draft'].includes(status)) {
-    return { error: 'invalid_status' };
-  }
-  const result = db
-    .prepare(`UPDATE puzzle_questions SET status = ?, reviewed_at = ? WHERE id = ?`)
-    .run(status, new Date().toISOString(), id);
-  if (result.changes === 0) return { error: 'not_found' };
-  return { ok: true };
-}
+  const apply = db.transaction(() => {
+    for (const { q, choices, answers, source } of toInsert) {
+      insert.run(q.cert_slug, q.domain, q.prompt, choices, answers, q.explanation, source, now, now, q.key);
+    }
+    for (const { q, choices, answers, source, id } of toUpdate) {
+      update.run(q.cert_slug, q.domain, q.prompt, choices, answers, q.explanation, source, now, id);
+    }
+    for (const row of toRetire) retire.run(now, row.id);
+  });
+  apply();
 
-/** Edit a draft's text in place. Only unreviewed drafts are editable. */
-export function updateQuestion(db, id, patch) {
-  const row = db.prepare(`SELECT status FROM puzzle_questions WHERE id = ?`).get(id);
-  if (!row) return { error: 'not_found' };
-
-  const fields = [];
-  const params = [];
-  if (typeof patch.prompt === 'string' && patch.prompt.trim()) {
-    fields.push('prompt = ?');
-    params.push(patch.prompt.trim());
-  }
-  if (Array.isArray(patch.choices) && patch.choices.length >= 2) {
-    fields.push('choices_json = ?');
-    params.push(JSON.stringify(patch.choices.map((c) => String(c).trim())));
-  }
-  if (Array.isArray(patch.answer_indices) && patch.answer_indices.length) {
-    fields.push('answer_indices = ?');
-    params.push(JSON.stringify(patch.answer_indices.map(Number)));
-  }
-  if (typeof patch.explanation === 'string' && patch.explanation.trim()) {
-    fields.push('explanation = ?');
-    params.push(patch.explanation.trim());
-  }
-  if (typeof patch.domain === 'string') {
-    fields.push('domain = ?');
-    params.push(patch.domain.trim() || null);
-  }
-  if (!fields.length) return { error: 'nothing_to_update' };
-
-  params.push(id);
-  db.prepare(`UPDATE puzzle_questions SET ${fields.join(', ')} WHERE id = ?`).run(...params);
-  return { ok: true };
+  return {
+    inserted: toInsert.length,
+    updated: toUpdate.length,
+    retired: toRetire.length,
+    clean: false,
+  };
 }

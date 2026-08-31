@@ -1,7 +1,12 @@
 import { config } from '../config.js';
+import { getDeskContent, DEFAULT_ACTIVE_CERT } from './content.js';
 
 /**
- * Study Desk: desk settings, the Canvas ICS feed, and the grade ledger.
+ * Study Desk: the Canvas ICS feed plus class/cert/grades from repo content.
+ *
+ * The desk_settings table and the /desk admin page are gone — the feed URL
+ * comes from config (Secret Manager) and everything else from
+ * content/desk.json, edited via pull request.
  *
  * The ICS feed is the source of truth for deadlines — refresh is
  * replace-on-fetch inside a transaction (no sync logic, no stale events).
@@ -9,20 +14,7 @@ import { config } from '../config.js';
  * ticker and weather snapshots.
  */
 
-const SETTING_KEYS = ['active_cert', 'cert_list', 'current_class', 'canvas_ics_url'];
-
-/** Certs seeded into the selector until the user saves their own list. */
-export const DEFAULT_CERT_LIST = [
-  'Associate Google Workspace Administrator',
-  'GCP Associate Cloud Engineer',
-  'Okta Certified Professional',
-  'Okta Certified Administrator',
-  'GCP Professional Cloud Architect',
-  'Jamf 100',
-];
-
-/** Cert shown until one is chosen at the desk. */
-export const DEFAULT_ACTIVE_CERT = 'Associate Google Workspace Administrator';
+export { DEFAULT_ACTIVE_CERT };
 
 /**
  * Stable slug for a cert's display name, used as the question bank's
@@ -41,32 +33,6 @@ export function certSlug(certName) {
 // Keep future events plus a month of history; hard cap for pathological feeds.
 const PAST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 const MAX_EVENTS = 500;
-
-export function getDeskSettings(db) {
-  const rows = db.prepare(`SELECT key, value FROM desk_settings`).all();
-  const out = {};
-  for (const row of rows) out[row.key] = row.value;
-  return out;
-}
-
-export function setDeskSettings(db, patch) {
-  const upsert = db.prepare(`
-    INSERT INTO desk_settings (key, value, updated_at) VALUES (?, ?, ?)
-    ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at
-  `);
-  const del = db.prepare(`DELETE FROM desk_settings WHERE key = ?`);
-  const now = new Date().toISOString();
-  const apply = db.transaction(() => {
-    for (const key of SETTING_KEYS) {
-      if (!(key in patch)) continue;
-      const value = patch[key];
-      if (value == null || value === '') del.run(key);
-      else upsert.run(key, String(value), now);
-    }
-  });
-  apply();
-  return getDeskSettings(db);
-}
 
 /** Unescape ICS TEXT values (RFC 5545 §3.3.11). */
 function unescapeIcsText(value) {
@@ -128,8 +94,7 @@ export function parseIcs(text) {
  * No-op when no ICS URL is configured.
  */
 export async function refreshStudyEvents(db) {
-  const settings = getDeskSettings(db);
-  const url = settings.canvas_ics_url;
+  const url = config.studyDeskIcsUrl;
   if (!url) return { ok: true, skipped: true };
 
   try {
@@ -166,20 +131,21 @@ export async function refreshStudyEvents(db) {
 
 /** Everything the front-page box needs, in one shot. */
 export function getStudyDeskView(db) {
-  const settings = getDeskSettings(db);
+  const desk = getDeskContent();
   const today = new Date().toISOString().slice(0, 10);
   // Date-only strings sort before same-day datetimes, so `>= today` keeps
   // anything due later today either way.
   const nextEvent = db
     .prepare(`SELECT title, due_at FROM study_events WHERE due_at >= ? ORDER BY due_at LIMIT 1`)
     .get(today);
-  const latestGrade = db
-    .prepare(`SELECT assignment, score FROM grades ORDER BY id DESC LIMIT 1`)
-    .get();
+  // Last entry in the file is the most recent — grades append at the bottom.
+  const latestGrade = desk.grades.length ? desk.grades[desk.grades.length - 1] : null;
   return {
-    current_class: settings.current_class || null,
-    ics_configured: Boolean(settings.canvas_ics_url),
+    current_class: desk.current_class,
+    ics_configured: Boolean(config.studyDeskIcsUrl),
     next_event: nextEvent || null,
-    latest_grade: latestGrade || null,
+    latest_grade: latestGrade
+      ? { assignment: latestGrade.assignment, score: String(latestGrade.score) }
+      : null,
   };
 }

@@ -3,8 +3,9 @@ import { generateEdition } from './anthropic.js';
 import { sendEditionEmail } from './email.js';
 import { fetchTickerSnapshot } from './markets.js';
 import { fetchWeatherSnapshot } from './weather.js';
-import { getDeskSettings, certSlug } from './studyDesk.js';
-import { assignQuestionForEdition } from './examiner.js';
+import { certSlug } from './studyDesk.js';
+import { getDeskContent } from './content.js';
+import { assignQuestionForEdition, syncQuestionsFromContent } from './examiner.js';
 
 /**
  * Build candidate clusters for the last 24h for the Claude prompt.
@@ -140,11 +141,14 @@ export async function runPublish({ editionDate, sendEmail = true } = {}) {
     weather ? JSON.stringify(weather) : null
   );
 
-  // Pin the day's Examiner question. Wrapped because a dry or wedged bank
-  // must never fail a publish — the box simply doesn't render.
+  // Sync the question bank from the repo file, then pin the day's Examiner
+  // question. Wrapped because a dry or wedged bank must never fail a
+  // publish — the box simply doesn't render.
   let puzzle = null;
   try {
-    const slug = certSlug(getDeskSettings(db).active_cert);
+    const sync = syncQuestionsFromContent(db);
+    if (!sync.clean) console.log('[publish] examiner bank synced:', JSON.stringify(sync));
+    const slug = certSlug(getDeskContent().active_cert);
     puzzle = assignQuestionForEdition(db, date, slug);
   } catch (err) {
     console.error('[publish] examiner assignment skipped:', err.message || err);

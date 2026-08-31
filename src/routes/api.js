@@ -8,24 +8,8 @@ import {
   getAdjacentDates,
 } from '../services/edition.js';
 import { getDb } from '../db/index.js';
-import {
-  getDeskSettings,
-  setDeskSettings,
-  refreshStudyEvents,
-  getStudyDeskView,
-  DEFAULT_CERT_LIST,
-  DEFAULT_ACTIVE_CERT,
-  certSlug,
-} from '../services/studyDesk.js';
-import {
-  getExaminerView,
-  recordAttempt,
-  getQuestionBank,
-  reviewQuestion,
-  updateQuestion,
-  currentStreak,
-} from '../services/examiner.js';
-import { draftQuestions } from '../services/questionWriter.js';
+import { getStudyDeskView } from '../services/studyDesk.js';
+import { getExaminerView, recordAttempt } from '../services/examiner.js';
 
 const router = Router();
 
@@ -97,83 +81,12 @@ router.get('/editions/:date', (req, res) => {
   res.json(serializeEdition(row, db));
 });
 
-// ---------- Publisher's Desk ----------
-// Session-authed like the reader routes (requireAuth runs upstream);
-// deliberately NOT on the identity-token path — this is a human surface.
+// ---------- Study Desk ----------
 
-const MAX_FIELD = 500;
-
+// Front-page box: class, next deadline, latest grade. Class and grades come
+// from content/desk.json; deadlines from the ICS refresh on the ingest cron.
 router.get('/study-desk', (req, res) => {
   res.json(getStudyDeskView(getDb()));
-});
-
-router.get('/desk', (req, res) => {
-  const db = getDb();
-  const settings = getDeskSettings(db);
-  let certList = DEFAULT_CERT_LIST;
-  try {
-    const parsed = JSON.parse(settings.cert_list || 'null');
-    if (Array.isArray(parsed) && parsed.length) certList = parsed.map(String);
-  } catch {
-    /* fall back to defaults */
-  }
-  const grades = db
-    .prepare(`SELECT id, assignment, score, created_at FROM grades ORDER BY id DESC LIMIT 50`)
-    .all();
-  const today = new Date().toISOString().slice(0, 10);
-  const events = db
-    .prepare(`SELECT title, due_at FROM study_events WHERE due_at >= ? ORDER BY due_at LIMIT 10`)
-    .all(today);
-  res.json({ settings, cert_list: certList, grades, events });
-});
-
-router.put('/desk/settings', async (req, res) => {
-  const body = req.body || {};
-  const patch = {};
-
-  for (const key of ['active_cert', 'current_class', 'canvas_ics_url']) {
-    if (!(key in body)) continue;
-    const value = body[key];
-    if (value != null && typeof value !== 'string') {
-      return res.status(400).json({ error: `invalid_${key}` });
-    }
-    if (value && value.length > MAX_FIELD) {
-      return res.status(400).json({ error: `${key}_too_long` });
-    }
-    patch[key] = value ? value.trim() : value;
-  }
-
-  if (patch.canvas_ics_url) {
-    let parsed;
-    try {
-      parsed = new URL(patch.canvas_ics_url);
-    } catch {
-      return res.status(400).json({ error: 'invalid_canvas_ics_url' });
-    }
-    if (parsed.protocol !== 'https:') {
-      return res.status(400).json({ error: 'ics_url_must_be_https' });
-    }
-  }
-
-  if ('cert_list' in body) {
-    const list = body.cert_list;
-    if (
-      !Array.isArray(list) ||
-      list.length > 25 ||
-      list.some((c) => typeof c !== 'string' || !c.trim() || c.length > MAX_FIELD)
-    ) {
-      return res.status(400).json({ error: 'invalid_cert_list' });
-    }
-    patch.cert_list = JSON.stringify(list.map((c) => c.trim()));
-  }
-
-  const db = getDb();
-  const icsChanged = 'canvas_ics_url' in patch;
-  const settings = setDeskSettings(db, patch);
-  // Refresh immediately on ICS change so the box comes alive without
-  // waiting for the next hourly ingest.
-  const refresh = icsChanged ? await refreshStudyEvents(db) : undefined;
-  res.json({ ok: true, settings, ...(refresh ? { ics_refresh: refresh } : {}) });
 });
 
 // ---- The Examiner ----
@@ -210,90 +123,6 @@ router.post('/puzzle/:date/attempt', (req, res) => {
   if (result.error === 'no_question') return res.status(404).json({ error: 'no_question' });
   if (result.error === 'already_answered') return res.status(409).json({ error: 'already_answered' });
   res.json(result);
-});
-
-// Review queue for the desk.
-router.get('/desk/questions', (req, res) => {
-  const db = getDb();
-  const settings = getDeskSettings(db);
-  const slug = certSlug(settings.active_cert || DEFAULT_ACTIVE_CERT);
-  const status = ['draft', 'approved', 'rejected', 'retired', 'all'].includes(req.query.status)
-    ? req.query.status
-    : 'draft';
-  const bank = getQuestionBank(db, { certSlug: slug, status });
-  res.json({
-    cert: settings.active_cert || DEFAULT_ACTIVE_CERT,
-    cert_slug: slug,
-    status,
-    streak: currentStreak(db),
-    ...bank,
-  });
-});
-
-router.post('/desk/questions/:id/review', (req, res) => {
-  const id = Number.parseInt(req.params.id, 10);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
-  const result = reviewQuestion(getDb(), id, String(req.body?.status || ''));
-  if (result.error === 'invalid_status') return res.status(400).json({ error: 'invalid_status' });
-  if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' });
-  res.json(result);
-});
-
-router.put('/desk/questions/:id', (req, res) => {
-  const id = Number.parseInt(req.params.id, 10);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
-
-  const body = req.body || {};
-  if (typeof body.prompt === 'string' && body.prompt.length > 2000) {
-    return res.status(400).json({ error: 'prompt_too_long' });
-  }
-  if (Array.isArray(body.choices) && body.choices.some((c) => String(c).length > 500)) {
-    return res.status(400).json({ error: 'choice_too_long' });
-  }
-  const result = updateQuestion(getDb(), id, body);
-  if (result.error === 'not_found') return res.status(404).json({ error: 'not_found' });
-  if (result.error === 'nothing_to_update') return res.status(400).json({ error: 'nothing_to_update' });
-  res.json(result);
-});
-
-// Batch drafting. Manual only — no cron reaches this.
-router.post('/desk/questions/draft', async (req, res) => {
-  const db = getDb();
-  const settings = getDeskSettings(db);
-  const certName = settings.active_cert || DEFAULT_ACTIVE_CERT;
-  const count = Number.parseInt(req.body?.count, 10);
-  try {
-    const result = await draftQuestions(db, {
-      certSlug: certSlug(certName),
-      certName,
-      count: Number.isInteger(count) ? count : 25,
-    });
-    res.json({ ok: true, cert: certName, ...result });
-  } catch (err) {
-    console.error('[desk] draft failed:', err.message || err);
-    res.status(502).json({ error: 'draft_failed', detail: err.message || String(err) });
-  }
-});
-
-router.post('/desk/grades', (req, res) => {
-  const assignment = (req.body?.assignment || '').trim();
-  const score = (req.body?.score || '').trim();
-  if (!assignment || !score || assignment.length > MAX_FIELD || score.length > 50) {
-    return res.status(400).json({ error: 'invalid_grade' });
-  }
-  const db = getDb();
-  const row = db
-    .prepare(`INSERT INTO grades (assignment, score, created_at) VALUES (?, ?, ?) RETURNING *`)
-    .get(assignment, score, new Date().toISOString());
-  res.json({ ok: true, grade: row });
-});
-
-router.delete('/desk/grades/:id', (req, res) => {
-  const id = Number.parseInt(req.params.id, 10);
-  if (!Number.isInteger(id)) return res.status(400).json({ error: 'invalid_id' });
-  const result = getDb().prepare(`DELETE FROM grades WHERE id = ?`).run(id);
-  if (result.changes === 0) return res.status(404).json({ error: 'not_found' });
-  res.json({ ok: true });
 });
 
 function serializeEdition(row, db) {
