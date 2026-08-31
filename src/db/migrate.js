@@ -1,7 +1,19 @@
 /**
  * Idempotent schema migrations. Each statement is safe to re-run.
+ *
+ * PRAGMA user_version gates the whole block: when the DB is already at
+ * SCHEMA_VERSION, boot performs ZERO writes. This matters because the
+ * production DB lives on a GCS FUSE volume and every deploy briefly runs
+ * the old and new revisions concurrently — a boot-time write during that
+ * overlap is what broke reads (SQLITE_IOERR_READ) in the Aug 10 incident.
+ * Bump SCHEMA_VERSION whenever a statement below changes.
  */
+export const SCHEMA_VERSION = 4; // 1: base, 2: ticker/weather, 3: desk, 4: examiner
+
 export function runMigrations(db) {
+  const current = db.pragma('user_version', { simple: true });
+  if (current >= SCHEMA_VERSION) return false;
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -130,4 +142,7 @@ export function runMigrations(db) {
       answered_at  TEXT NOT NULL
     );
   `);
+
+  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+  return true;
 }
