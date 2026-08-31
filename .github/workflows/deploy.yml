@@ -93,3 +93,22 @@ jobs:
             --add-volume-mount=volume=db-storage,mount-path=/data \
             --set-secrets=ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest,SESSION_SECRET=SESSION_SECRET:latest,GH_CLIENT_SECRET=GH_CLIENT_SECRET:latest,RESEND_API_KEY=RESEND_API_KEY:latest \
             --update-env-vars="^||^NODE_ENV=production||GH_CLIENT_ID=${{ vars.GH_CLIENT_ID }}||ALLOWED_GITHUB_USERNAMES=${{ vars.ALLOWED_GITHUB_USERNAMES }}||ALLOWED_INVOKER_EMAILS=${{ vars.ALLOWED_INVOKER_EMAILS }}||DIGEST_EMAIL_TO=${{ vars.DIGEST_EMAIL_TO }}||DIGEST_EMAIL_FROM=${{ vars.DIGEST_EMAIL_FROM }}||APP_URL=${{ vars.APP_URL }}||CLOUD_RUN_SERVICE_URL=${{ vars.CLOUD_RUN_SERVICE_URL }}"
+
+      - name: Post-deploy smoke test (deep health)
+        env:
+          SERVICE_URL: ${{ vars.CLOUD_RUN_SERVICE_URL }}
+        run: |
+          set -euo pipefail
+          SERVICE_URL="${SERVICE_URL%/}"
+          # Three spaced probes. The Aug 10 breakage (SQLITE_IOERR_READ on the
+          # FUSE volume) first surfaced ~2 minutes after the new revision
+          # booted, so a single immediate check would have passed and lied.
+          for i in 1 2 3; do
+            sleep 45
+            CODE="$(curl -sS -o /dev/null -w '%{http_code}' "${SERVICE_URL}/health?deep=1")"
+            echo "smoke ${i}/3: /health?deep=1 -> HTTP ${CODE}"
+            if [[ "${CODE}" != "200" ]]; then
+              echo "::error::Deep health check failed after deploy — the new revision cannot read the DB. Roll back traffic in Cloud Run if this persists."
+              exit 1
+            fi
+          done
