@@ -6,7 +6,7 @@ import session from 'express-session';
 import passport from 'passport';
 
 import { config } from './config.js';
-import { getDb } from './db/index.js';
+import { getDb, closeDb } from './db/index.js';
 import { configurePassport } from './auth/passport.js';
 import { createSqliteSessionStore } from './auth/sessionStore.js';
 import { requireAuth } from './middleware/requireAuth.js';
@@ -82,6 +82,20 @@ if (hasClient) {
 
 app.use((err, _req, res, _next) => {
   console.error('[error]', err);
+  // Self-heal: a SQLITE_IOERR* on the GCS FUSE volume tends to persist on the
+  // open file handle (Aug 10 incident: every read 500'd until a redeploy
+  // remounted). Closing the handle makes the next request reopen the file
+  // fresh, which is exactly what the redeploy did — without the redeploy.
+  if (typeof err?.code === 'string' && err.code.startsWith('SQLITE_IOERR')) {
+    console.error('[db] SQLITE_IOERR detected — closing DB handle so the next request reopens it');
+    try {
+      closeDb();
+    } catch (closeErr) {
+      console.error('[db] close after IOERR failed:', closeErr);
+    }
+    res.set('Retry-After', '2');
+    return res.status(503).json({ error: 'database_unavailable_retrying' });
+  }
   res.status(500).json({ error: 'internal_error' });
 });
 
