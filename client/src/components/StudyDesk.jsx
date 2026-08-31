@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router';
 import { fetchStudyDesk } from '../api.js';
 import { formatDue, dueRelative } from '../lib/format.js';
 
@@ -68,10 +67,7 @@ export default function StudyDesk() {
             ) : null}
           </>
         ) : (
-          <p className="desk-empty">
-            Awaiting enrollment. Class and deadlines appear here once set at the{' '}
-            <Link to="/desk">Publisher&apos;s Desk</Link>.
-          </p>
+          <p className="desk-empty">Awaiting enrollment.</p>
         )}
       </div>
     </section>

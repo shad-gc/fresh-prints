@@ -1,0 +1,352 @@
+[
+  {
+    "key": "agwa-001",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing user accounts, domains, and Directory",
+    "prompt": "An admin deleted a user account 15 days ago and now needs the account and its data back. What is the correct move?",
+    "choices": [
+      "Create a new account with the same username; Google reattaches the old data automatically",
+      "Restore the deleted user from the Admin console, which is possible within 20 days of deletion",
+      "Export the data from Google Vault into a newly created account",
+      "Open a support case; only Google support can undelete accounts"
+    ],
+    "answer_indices": [1],
+    "explanation": "Deleted users can be restored from the Admin console for up to 20 days, bringing back the account and most service data. After the window closes the account and its data are gone for good; Vault only helps if retention rules or holds covered the data."
+  },
+  {
+    "key": "agwa-002",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing user accounts, domains, and Directory",
+    "prompt": "Your company acquires a second brand and wants a group of NEW users whose usernames and email exist only on the new brand's domain. What should you add in the Admin console?",
+    "choices": [
+      "A domain alias, so every user automatically gets an address at the new domain",
+      "A secondary domain, then create the new users on it",
+      "A catch-all routing rule that forwards the new domain's mail",
+      "A separate Workspace tenant for the new brand"
+    ],
+    "answer_indices": [1],
+    "explanation": "A secondary domain hosts its own distinct users and mailboxes under the same tenant. A domain alias is the wrong tool here: it mirrors an address at the alias domain for every existing user rather than allowing separate accounts."
+  },
+  {
+    "key": "agwa-003",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing user accounts, domains, and Directory",
+    "prompt": "What is Google Cloud Directory Sync (GCDS) designed to do?",
+    "choices": [
+      "Two-way synchronization of users between Active Directory and Google Directory",
+      "One-way synchronization from an LDAP/Active Directory source into Google Directory",
+      "Real-time password federation between AD and Google sign-in",
+      "Migrating mailboxes from Exchange to Gmail"
+    ],
+    "answer_indices": [1],
+    "explanation": "GCDS reads your LDAP or Active Directory and pushes adds, updates, and deletes one way into Google Directory — your directory server stays the source of truth and is never modified. Password sync and mail migration are separate tools (Password Sync, GWMME)."
+  },
+  {
+    "key": "agwa-004",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing user accounts, domains, and Directory",
+    "prompt": "An employee changes their last name and the admin renames their account to a new primary email address. What happens to the old address by default?",
+    "choices": [
+      "It is released immediately and can be claimed by a new user",
+      "It becomes an email alias of the account, so mail sent to it still arrives",
+      "It bounces all mail with a permanent error",
+      "It forwards mail for 30 days and then stops"
+    ],
+    "answer_indices": [1],
+    "explanation": "When you rename a user, the previous primary address is kept as an alias so nothing sent there is lost. The alias can be removed manually later if the old address should stop working."
+  },
+  {
+    "key": "agwa-005",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing user accounts, domains, and Directory",
+    "prompt": "HR wants every user's profile to carry an internal employee ID that isn't a standard field. How do you add it?",
+    "choices": [
+      "Put the ID in each user's Notes field",
+      "Define a custom attribute in a custom schema under Directory settings, then populate it per user or via API",
+      "Create a Google Group per employee ID",
+      "Store the mapping in a shared Sheet; the Directory cannot be extended"
+    ],
+    "answer_indices": [1],
+    "explanation": "Custom user attributes (custom schemas) extend the Directory with organization-specific fields, editable in the Admin console and readable/writable through the Directory API — which also makes them usable by tools like GAM."
+  },
+  {
+    "key": "agwa-006",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "During a phased migration, some users' mailboxes still live on an on-premises server. Mail for everyone arrives at Google first. How do you get mail to the unmigrated users?",
+    "choices": [
+      "Ask senders to use the on-prem server's hostname directly",
+      "Set up a routing rule with an alternate delivery route to the on-prem host for unrecognized or designated addresses",
+      "Enable IMAP so the legacy server can poll Gmail",
+      "Add the on-prem server as a domain alias"
+    ],
+    "answer_indices": [1],
+    "explanation": "Gmail routing settings (split/dual delivery) let Google accept mail for the domain and route messages for specific users or unknown addresses to an on-premises mail host — the standard coexistence pattern during migrations."
+  },
+  {
+    "key": "agwa-007",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "A project team's files keep disappearing when members leave the company because the files lived in personal My Drive folders. What is the right fix?",
+    "choices": [
+      "Require members to share their My Drive folders with the whole team",
+      "Move the team's work into a shared drive, where files belong to the team rather than an individual",
+      "Schedule regular Takeout exports of each member's Drive",
+      "Transfer ownership of every file to the manager whenever someone departs"
+    ],
+    "answer_indices": [1],
+    "explanation": "Shared drive content is owned by the team, so membership changes never orphan files. Ownership transfer on departure works but is reactive and error-prone; shared drives remove the problem structurally."
+  },
+  {
+    "key": "agwa-008",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "Users need to book conference rooms directly from a Calendar event. What must the admin set up first?",
+    "choices": [
+      "A Google Group per conference room",
+      "Buildings and calendar resources in the Admin console Directory settings",
+      "A shared calendar named after each room",
+      "Calendar Interop"
+    ],
+    "answer_indices": [1],
+    "explanation": "Rooms are calendar resources attached to buildings, defined under Directory > Buildings and resources. Once created they appear in the event 'Rooms' picker with availability; a plain shared calendar lacks booking and conflict handling."
+  },
+  {
+    "key": "agwa-009",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "The school's admin must make YouTube unavailable to students but keep it on for staff. Both populations are in separate organizational units. What is the standard approach?",
+    "choices": [
+      "Block youtube.com at the network firewall",
+      "Turn the YouTube service off for the students' organizational unit under Additional Google services",
+      "Remove students' Google accounts from Chrome",
+      "Enable Restricted Mode, which fully disables YouTube"
+    ],
+    "answer_indices": [1],
+    "explanation": "Service on/off states are applied per organizational unit. YouTube is an Additional Google service, so switching it off for the student OU disables sign-in use of the service without affecting staff."
+  },
+  {
+    "key": "agwa-010",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "A Google Group should let outside partners be members, but only internal employees may post. Where is this configured?",
+    "choices": [
+      "It isn't possible; external members always get posting rights",
+      "In the group's access settings: allow external members, and set 'who can post' to organization or member subsets accordingly",
+      "By adding partners as group owners",
+      "In Gmail routing rules for the group address"
+    ],
+    "answer_indices": [1],
+    "explanation": "Group access settings separately control who can join or be added (including external members) and who can post, view, or moderate. Combining 'external members allowed' with a restricted posting audience covers this exactly."
+  },
+  {
+    "key": "agwa-011",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing core Workspace services",
+    "prompt": "Legal requires that users in the Finance OU cannot share Drive files with anyone outside the domain, while other departments keep external sharing. What do you change?",
+    "choices": [
+      "Turn Drive off for the Finance OU",
+      "Set Drive external sharing to off (or allowlisted domains only) for the Finance OU in Drive sharing settings",
+      "Apply a DLP rule that blocks every outbound email attachment",
+      "Move Finance to a separate Workspace tenant"
+    ],
+    "answer_indices": [1],
+    "explanation": "Drive sharing options are set per organizational unit. Setting the Finance OU's external sharing to off — or restricting it to trusted domains — enforces the requirement without touching other departments or disabling the service."
+  },
+  {
+    "key": "agwa-012",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing data governance and compliance",
+    "prompt": "Legal announces litigation involving three employees, and their mail must be preserved indefinitely even if they delete messages. What is the correct Vault action?",
+    "choices": [
+      "Create a retention rule of 10 years for the whole domain",
+      "Place a hold on the three custodians in a Vault matter",
+      "Export the users' mailboxes once and store the archive",
+      "Suspend the three accounts so nothing changes"
+    ],
+    "answer_indices": [1],
+    "explanation": "Holds preserve a custodian's data indefinitely regardless of retention rules or user deletions, exactly for litigation. A one-time export misses future messages, and retention changes affect the whole scope rather than the named custodians."
+  },
+  {
+    "key": "agwa-013",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing data governance and compliance",
+    "prompt": "A European subsidiary must have its users' primary Workspace data stored in Europe. What does the admin use?",
+    "choices": [
+      "A data region policy assigning those users' data to Europe, applied by OU or group",
+      "A Vault retention rule scoped to the subsidiary",
+      "Client-side encryption for the subsidiary's OU",
+      "A separate European Workspace tenant, which is the only way to control location"
+    ],
+    "answer_indices": [0],
+    "explanation": "Data region policies let eligible editions pin covered data at rest to a geography (such as Europe) for selected OUs or groups within the same tenant. Vault, CSE, and separate tenants solve different problems."
+  },
+  {
+    "key": "agwa-014",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing data governance and compliance",
+    "prompt": "Compliance wants Drive files containing US Social Security numbers blocked from being shared outside the company. What is the right mechanism?",
+    "choices": [
+      "A Vault hold on all Drive data",
+      "A DLP rule using the predefined SSN detector with an action that blocks external sharing",
+      "Turning off Drive external sharing for everyone",
+      "A content compliance rule in Gmail settings"
+    ],
+    "answer_indices": [1],
+    "explanation": "Drive DLP rules scan file content with predefined detectors like US_SOCIAL_SECURITY_NUMBER and can block or warn on external sharing only when sensitive content is present — targeted enforcement instead of an org-wide sharing shutdown."
+  },
+  {
+    "key": "agwa-015",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing data governance and compliance",
+    "prompt": "An employee left last month and their account will be deleted, but legal needs a defensible export of their email first. Which tool produces it?",
+    "choices": [
+      "Google Takeout run by the admin",
+      "A Vault search scoped to the account, followed by a Vault export",
+      "Forwarding the mailbox to the manager before deletion",
+      "The Gmail API with domain-wide delegation into a spreadsheet"
+    ],
+    "answer_indices": [1],
+    "explanation": "Vault search and export is the compliance-grade path: it covers content preserved by retention or holds and produces exports with metadata suitable for legal review. Takeout is user-initiated and not designed for defensible discovery."
+  },
+  {
+    "key": "agwa-016",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing security policies and access controls",
+    "prompt": "Policy requires every super admin to use 2-Step Verification with phishing-resistant credentials only. How do you enforce it?",
+    "choices": [
+      "Turn on 2SV enforcement for the admin group or OU and set the allowed method to security keys only",
+      "Ask each admin to enroll in 2SV voluntarily",
+      "Enable login challenges, which are equivalent to 2SV",
+      "Require password rotation every 30 days for admins"
+    ],
+    "answer_indices": [0],
+    "explanation": "2SV enforcement is applied per OU or group, and the enforcement policy can restrict allowed second factors to security keys — the phishing-resistant option. Login challenges and password rotation are not substitutes."
+  },
+  {
+    "key": "agwa-017",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing security policies and access controls",
+    "prompt": "Security wants Drive to be reachable only from the corporate network, while Gmail stays available anywhere. Which feature does this?",
+    "choices": [
+      "Per-OU service on/off toggles",
+      "Context-Aware Access: define an access level for the corporate IP range and apply it to Drive",
+      "A firewall rule blocking drive.google.com externally",
+      "Drive DLP with an IP condition"
+    ],
+    "answer_indices": [1],
+    "explanation": "Context-Aware Access applies attribute-based conditions (IP subnet, device policy, geography) per application. Assigning a corporate-network access level to Drive alone restricts it without touching Gmail; a network firewall can't make this per-identity decision."
+  },
+  {
+    "key": "agwa-018",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing security policies and access controls",
+    "prompt": "A third-party app is asking users for full Gmail access via OAuth. The org wants only vetted apps to get sensitive scopes. Where is this controlled?",
+    "choices": [
+      "Gmail safety settings",
+      "Security > API controls > App access control, restricting Google service scopes and marking vetted apps as trusted",
+      "The Marketplace allowlist, which governs all OAuth apps",
+      "Password vaulted apps in SSO settings"
+    ],
+    "answer_indices": [1],
+    "explanation": "App access control governs which third-party OAuth apps may reach Google APIs: services can be marked restricted so only apps explicitly marked trusted get sensitive scopes like Gmail. The Marketplace allowlist only covers Marketplace installs."
+  },
+  {
+    "key": "agwa-019",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing security policies and access controls",
+    "prompt": "The company standardizes on an external identity provider (such as Okta) for sign-in to Google Workspace. What does the admin configure on the Google side?",
+    "choices": [
+      "OAuth consent screens for the IdP",
+      "SSO with a third-party identity provider: upload the IdP's certificate and set the SAML sign-in page URLs in SSO settings",
+      "Google Credential Provider for Windows",
+      "Directory sync, which also handles authentication"
+    ],
+    "answer_indices": [1],
+    "explanation": "Third-party SSO makes Google act as the SAML service provider: you configure the IdP's sign-in, sign-out, and certificate details, after which Google redirects user authentication to the IdP. Directory sync only moves accounts, never sign-ins."
+  },
+  {
+    "key": "agwa-020",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing security policies and access controls",
+    "prompt": "A high-risk team must re-authenticate to Google services every 8 hours instead of staying signed in for weeks. What do you set?",
+    "choices": [
+      "A password expiration policy of 8 hours",
+      "A Google session control policy for that OU setting session length to 8 hours",
+      "A Context-Aware Access level with a time condition",
+      "Chrome forced sign-out via device policy"
+    ],
+    "answer_indices": [1],
+    "explanation": "Google session control sets web session duration per OU; when it expires users must sign in again, which also re-runs SSO and 2SV. Password expiry is unrelated to session lifetime."
+  },
+  {
+    "key": "agwa-021",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing browsers and endpoints",
+    "prompt": "The org must be able to require a strong passcode, approve devices before first sync, and wipe the work profile on employees' Android phones. Which setup is required?",
+    "choices": [
+      "Basic mobile management, which covers all of these",
+      "Advanced mobile management for the OU, with device approvals enabled",
+      "Google endpoint verification only",
+      "A third-party MDM is the only way to wipe work profiles"
+    ],
+    "answer_indices": [1],
+    "explanation": "Basic management offers limited controls (screen lock, account wipe). Device approvals, strong passcode requirements, and work-profile management need advanced mobile management applied to the OU."
+  },
+  {
+    "key": "agwa-022",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Managing browsers and endpoints",
+    "prompt": "IT wants Chrome policies — forced safe browsing, extension blocklist — to follow employees whenever they sign in to Chrome, even on unmanaged personal machines. What applies these?",
+    "choices": [
+      "User-level Chrome settings in the Admin console (Devices > Chrome > Settings), which apply to signed-in Chrome profiles",
+      "Windows Group Policy templates",
+      "Device-level Chrome policies, which cover every profile",
+      "Endpoint verification"
+    ],
+    "answer_indices": [0],
+    "explanation": "User settings for Chrome attach to the Google identity: signing in to Chrome with a managed account pulls the policies onto that profile regardless of the machine. GPO and device policies bind to machines, not identities."
+  },
+  {
+    "key": "agwa-023",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Monitoring and troubleshooting common issues",
+    "prompt": "A user insists an important external message never arrived. What is the admin's most direct diagnostic step?",
+    "choices": [
+      "Ask the sender for a screenshot of the sent message",
+      "Run Email Log Search in the Admin console for the sender, recipient, and time window to trace the message's delivery path",
+      "Check the Google Workspace Status Dashboard",
+      "Enable comprehensive mail storage and wait for the next attempt"
+    ],
+    "answer_indices": [1],
+    "explanation": "Email Log Search shows whether the message reached Google and what happened next — delivered, quarantined, rejected, rerouted — with per-message detail. It is the first stop for any 'missing mail' report."
+  },
+  {
+    "key": "agwa-024",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Monitoring and troubleshooting common issues",
+    "prompt": "Security asks who shared a specific confidential Drive file with an external address last week. Where does the admin find this?",
+    "choices": [
+      "The file's version history",
+      "Drive log events in the Admin console reporting/audit section (or the security investigation tool), filtered to the file and sharing events",
+      "Vault search on the file's contents",
+      "The user's Gmail sent folder"
+    ],
+    "answer_indices": [1],
+    "explanation": "Drive audit/log events record sharing actions with actor, target, visibility change, and timestamp; the security investigation tool adds pivoting on the same data. Version history shows edits, not ACL changes."
+  },
+  {
+    "key": "agwa-025",
+    "cert_slug": "associate-google-workspace-administrator",
+    "domain": "Monitoring and troubleshooting common issues",
+    "prompt": "Multiple users across departments suddenly report Gmail errors at the same time. Before deep-diving individual accounts, what should the admin check first?",
+    "choices": [
+      "Each affected user's connected apps",
+      "The Google Workspace Status Dashboard and Admin console alerts for a service-side incident",
+      "MX records, since they most commonly break spontaneously",
+      "Chrome versions across the fleet"
+    ],
+    "answer_indices": [1],
+    "explanation": "A simultaneous multi-user failure pattern points at the service, not the users. The Status Dashboard confirms or rules out a Google-side incident in seconds, which determines whether any local troubleshooting is even useful."
+  }
+]

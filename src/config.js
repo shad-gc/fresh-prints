@@ -13,6 +13,11 @@ export const config = {
   isDev: (process.env.NODE_ENV || 'development') === 'development',
   port: Number(process.env.PORT || 8080),
   databaseUrl: process.env.DATABASE_URL || './prints.db',
+  // Canvas calendar feed for the Study Desk box. The URL embeds a personal
+  // access token, so it arrives via Secret Manager — never the repo or
+  // plain env vars in workflow files. Optional: unset just means the box
+  // shows its empty state.
+  studyDeskIcsUrl: process.env.STUDY_DESK_ICS_URL || null,
   sessionSecret: process.env.SESSION_SECRET || 'dev-only-insecure-secret',
   ghClientId: process.env.GH_CLIENT_ID || '',
   ghClientSecret: process.env.GH_CLIENT_SECRET || '',

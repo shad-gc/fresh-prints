@@ -82,17 +82,7 @@ export default function Broadsheet({ edition, isFrontPage = false }) {
         <footer className="colophon">
           <div className="rule-double" />
           <div className="colophon__row">
-            <span>
-              Fresh Prints — printed by robots, read by one human
-              {isFrontPage ? (
-                <>
-                  {' · '}
-                  <Link to="/desk" className="colophon__desk">
-                    Publisher&apos;s Desk
-                  </Link>
-                </>
-              ) : null}
-            </span>
+            <span>Fresh Prints — printed by robots, read by one human</span>
             <span>No. {edition.edition_number}</span>
           </div>
         </footer>
