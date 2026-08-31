@@ -1,7 +1,19 @@
 /**
  * Idempotent schema migrations. Each statement is safe to re-run.
+ *
+ * PRAGMA user_version gates the whole block: when the DB is already at
+ * SCHEMA_VERSION, boot performs ZERO writes. This matters because the
+ * production DB lives on a GCS FUSE volume and every deploy briefly runs
+ * the old and new revisions concurrently — a boot-time write during that
+ * overlap is what broke reads (SQLITE_IOERR_READ) in the Aug 10 incident.
+ * Bump SCHEMA_VERSION whenever a statement below changes.
  */
+export const SCHEMA_VERSION = 4; // 1: base, 2: ticker/weather, 3: desk, 4: examiner
+
 export function runMigrations(db) {
+  const current = db.pragma('user_version', { simple: true });
+  if (current >= SCHEMA_VERSION) return false;
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS sources (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -87,4 +99,50 @@ export function runMigrations(db) {
 
     CREATE INDEX IF NOT EXISTS idx_study_events_due_at ON study_events(due_at);
   `);
+
+  // PR C: The Examiner. Questions are batch-drafted, human-reviewed, and only
+  // then eligible for the paper — nothing here is written at request time.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS puzzle_questions (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      cert_slug      TEXT NOT NULL,
+      domain         TEXT,
+      prompt         TEXT NOT NULL,
+      choices_json   TEXT NOT NULL,
+      answer_indices TEXT NOT NULL,
+      explanation    TEXT NOT NULL,
+      source_url     TEXT,
+      status         TEXT NOT NULL DEFAULT 'draft',
+      model          TEXT,
+      batch_id       TEXT,
+      created_at     TEXT NOT NULL,
+      reviewed_at    TEXT,
+      times_used     INTEGER NOT NULL DEFAULT 0,
+      last_used_on   TEXT
+    );
+
+    -- Drives the least-recently-used pick at publish time.
+    CREATE INDEX IF NOT EXISTS idx_pq_pick
+      ON puzzle_questions(cert_slug, status, last_used_on);
+
+    -- One question pinned per edition. Immutable once written, so an archived
+    -- edition always shows the question it actually printed with.
+    CREATE TABLE IF NOT EXISTS puzzle_assignments (
+      edition_date TEXT PRIMARY KEY,
+      question_id  INTEGER NOT NULL REFERENCES puzzle_questions(id),
+      assigned_at  TEXT NOT NULL
+    );
+
+    -- Honor system: one attempt per edition, ever. chosen_json NULL means the
+    -- answer was revealed without committing to a guess.
+    CREATE TABLE IF NOT EXISTS puzzle_attempts (
+      edition_date TEXT PRIMARY KEY,
+      chosen_json  TEXT,
+      was_correct  INTEGER,
+      answered_at  TEXT NOT NULL
+    );
+  `);
+
+  db.pragma(`user_version = ${SCHEMA_VERSION}`);
+  return true;
 }

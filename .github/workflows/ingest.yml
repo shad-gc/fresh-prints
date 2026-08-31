@@ -9,6 +9,7 @@ on:
 permissions:
   contents: read
   id-token: write
+  issues: write
 
 jobs:
   ingest:
@@ -72,3 +73,25 @@ jobs:
             exit 1
           fi
           echo "ingest ok (HTTP ${HTTP_CODE})"
+
+      # Ingest runs hourly — repeat failures comment on the same open issue
+      # instead of spamming new ones. (Aug 26 had a silent red run.)
+      - name: Alert on failure (GitHub issue)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          ERR="$(jq -r '.error // empty' /tmp/ingest-body.json 2>/dev/null | head -c 400 || true)"
+          TITLE="Ingest failed: $(date -u +%F)"
+          BODY="$(printf 'Scheduled ingest failed.\n\nRun: %s\n\nServer error: %s\n' "${RUN_URL}" "${ERR:-"(no error field / non-JSON response)"}")"
+          gh label create ingest-failure --repo "${REPO}" --color D93F0B \
+            --description "Automated: scheduled ingest failed" --force || true
+          EXISTING="$(gh issue list --repo "${REPO}" --label ingest-failure --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "${EXISTING}" ]]; then
+            gh issue comment "${EXISTING}" --repo "${REPO}" --body "${BODY}"
+          else
+            gh issue create --repo "${REPO}" --title "${TITLE}" --body "${BODY}" --label ingest-failure
+          fi

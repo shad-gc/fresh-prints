@@ -218,6 +218,20 @@ const SOURCES = [
 ];
 
 export function seedSources(db) {
+  // Boot must be read-only in steady state (see migrate.js). Only touch the
+  // DB when a source is genuinely missing or drifted from code.
+  const existing = new Map(
+    db
+      .prepare(`SELECT name, type, url, is_vendor FROM sources`)
+      .all()
+      .map((r) => [r.name, r])
+  );
+  const dirty = SOURCES.filter((s) => {
+    const row = existing.get(s.name);
+    return !row || row.type !== s.type || row.url !== s.url || row.is_vendor !== s.is_vendor;
+  });
+  if (dirty.length === 0) return false;
+
   // On conflict: refresh type/url/is_vendor from code, but preserve
   // enabled + min_points so operator tuning in the DB survives restarts.
   const upsert = db.prepare(`
@@ -232,7 +246,9 @@ export function seedSources(db) {
   const tx = db.transaction((rows) => {
     for (const row of rows) upsert.run(row);
   });
-  tx(SOURCES);
+  tx(dirty);
+  console.log(`[db] seeded/updated ${dirty.length} source(s)`);
+  return true;
 }
 
 export { SOURCES };
