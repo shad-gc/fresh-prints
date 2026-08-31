@@ -66,12 +66,31 @@ export function validateEditionPayload(payload) {
   if (!payload || typeof payload !== 'object') {
     throw new Error('Edition payload is not an object');
   }
+  // The model sometimes returns array fields as stringified JSON despite the
+  // tool schema (Aug 30 failure: top_stories was a ~4k-char string, so the
+  // "exactly 5 items" error reported its character count). Coerce before
+  // validating.
+  for (const key of ['top_stories', 'the_wire']) {
+    if (typeof payload[key] === 'string') {
+      try {
+        payload[key] = JSON.parse(payload[key]);
+        console.warn(`[edition] coerced ${key} from a JSON string to a real value`);
+      } catch {
+        // fall through — the type checks below produce the actionable error
+      }
+    }
+  }
   const { edition_title, top_stories, the_wire } = payload;
   if (typeof edition_title !== 'string' || !edition_title.trim()) {
     throw new Error('edition_title missing or empty');
   }
-  if (!Array.isArray(top_stories) || top_stories.length !== 5) {
-    throw new Error(`top_stories must have exactly 5 items (got ${top_stories?.length})`);
+  if (!Array.isArray(top_stories)) {
+    throw new Error(
+      `top_stories must be a JSON array of story objects, not ${typeof top_stories}`
+    );
+  }
+  if (top_stories.length !== 5) {
+    throw new Error(`top_stories must have exactly 5 items (got ${top_stories.length})`);
   }
   for (let i = 0; i < top_stories.length; i++) {
     const s = top_stories[i];
@@ -89,8 +108,11 @@ export function validateEditionPayload(payload) {
       }
     }
   }
-  if (!Array.isArray(the_wire) || the_wire.length < 10 || the_wire.length > 20) {
-    throw new Error(`the_wire must have 10–20 items (got ${the_wire?.length})`);
+  if (!Array.isArray(the_wire)) {
+    throw new Error(`the_wire must be a JSON array of blurb objects, not ${typeof the_wire}`);
+  }
+  if (the_wire.length < 10 || the_wire.length > 20) {
+    throw new Error(`the_wire must have 10–20 items (got ${the_wire.length})`);
   }
   for (let i = 0; i < the_wire.length; i++) {
     const w = the_wire[i];
@@ -120,7 +142,8 @@ export async function generateEdition(candidates) {
   let totalIn = 0;
   let totalOut = 0;
 
-  for (let attempt = 1; attempt <= 2; attempt++) {
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     try {
       const response = await client.messages.create({
         model: config.anthropicModel,
@@ -133,13 +156,19 @@ export async function generateEdition(candidates) {
             content:
               attempt === 1
                 ? prompt
-                : `${prompt}\n\n---\nPrevious attempt failed validation: ${lastError}. Fix and resubmit via the tool.`,
+                : `${prompt}\n\n---\nPrevious attempt failed validation: ${lastError}. Every field must be real JSON — top_stories and the_wire must be actual arrays of objects, never a string containing JSON. Fix and resubmit via the tool.`,
           },
         ],
       });
 
       totalIn += response.usage?.input_tokens || 0;
       totalOut += response.usage?.output_tokens || 0;
+
+      if (response.stop_reason === 'max_tokens') {
+        throw new Error(
+          'response truncated at max_tokens — write shorter summaries and resubmit'
+        );
+      }
 
       const toolBlock = (response.content || []).find(
         (b) => b.type === 'tool_use' && b.name === 'submit_edition'
@@ -158,7 +187,7 @@ export async function generateEdition(candidates) {
     } catch (err) {
       lastError = err.message || String(err);
       console.error(`[edition] attempt ${attempt} failed:`, lastError);
-      if (attempt === 2) {
+      if (attempt === MAX_ATTEMPTS) {
         const fail = new Error(
           `Edition generation failed after retry: ${lastError}`
         );
