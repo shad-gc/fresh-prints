@@ -44,6 +44,10 @@ export function getDeskContent() {
         typeof data.current_class === 'string' && data.current_class.trim()
           ? data.current_class.trim()
           : null,
+      calendar_filter:
+        typeof data.calendar_filter === 'string' && data.calendar_filter.trim()
+          ? data.calendar_filter.trim()
+          : null,
       grades: Array.isArray(data.grades)
         ? data.grades.filter(
             (g) =>
@@ -56,7 +60,12 @@ export function getDeskContent() {
     };
   } catch (err) {
     console.error('[content] desk.json unreadable, using defaults:', err.message);
-    deskCache = { active_cert: DEFAULT_ACTIVE_CERT, current_class: null, grades: [] };
+    deskCache = {
+      active_cert: DEFAULT_ACTIVE_CERT,
+      current_class: null,
+      calendar_filter: null,
+      grades: [],
+    };
   }
   return deskCache;
 }

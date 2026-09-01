@@ -49,6 +49,13 @@ if (desk !== undefined) {
     if (desk.current_class !== null && typeof desk.current_class !== 'string') {
       fail('desk.json: current_class must be a string or null');
     }
+    if (
+      desk.calendar_filter !== undefined &&
+      desk.calendar_filter !== null &&
+      (typeof desk.calendar_filter !== 'string' || !desk.calendar_filter.trim())
+    ) {
+      fail('desk.json: calendar_filter must be a non-empty string, null, or omitted');
+    }
     if (!Array.isArray(desk.grades)) {
       fail('desk.json: grades must be an array');
     } else {

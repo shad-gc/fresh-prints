@@ -90,6 +90,20 @@ export function parseIcs(text) {
 }
 
 /**
+ * Canvas titles end with their source calendar in brackets, e.g.
+ * "Exam 1 [CS-6035-O01, OCY, QSA]" or "Labor Day [OMSCS Student Center]".
+ * When desk.json sets calendar_filter, keep only events whose bracket tag
+ * contains it (case-insensitive). No filter, or no bracket tag -> keep.
+ */
+export function matchesCalendarFilter(title) {
+  const filter = getDeskContent().calendar_filter;
+  if (!filter) return true;
+  const m = /\[([^\]]*)\]\s*$/.exec(title || '');
+  if (!m) return true;
+  return m[1].toLowerCase().includes(filter.toLowerCase());
+}
+
+/**
  * Fetch the Canvas feed and replace study_events. Never throws.
  * No-op when no ICS URL is configured.
  */
@@ -107,6 +121,7 @@ export async function refreshStudyEvents(db) {
 
     const cutoff = new Date(Date.now() - PAST_WINDOW_MS).toISOString().slice(0, 10);
     const kept = events
+      .filter((e) => matchesCalendarFilter(e.title))
       .filter((e) => e.due_at >= cutoff)
       .sort((a, b) => (a.due_at < b.due_at ? -1 : 1))
       .slice(0, MAX_EVENTS);
