@@ -2,14 +2,26 @@ import { config } from '../config.js';
 
 const PUBLIC_PREFIXES = ['/auth', '/health', '/api/ingest', '/api/publish'];
 
+// Browser-fetched icons; no session cookie on login page / iOS home-screen fetches
+const PUBLIC_FILES = [
+  '/favicon.ico',
+  '/favicon-32.png',
+  '/apple-touch-icon.png',
+  '/icon-192.png',
+  '/icon-512.png',
+];
+
 /**
  * Session auth gate. Registered before app routes.
  * Exemptions: /auth/*, /health, /api/ingest, /api/publish
- * (ingest/publish use identity-token middleware instead).
+ * (ingest/publish use identity-token middleware instead), favicon files.
  */
 export function requireAuth(req, res, next) {
   const path = req.path || '';
   if (PUBLIC_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
+    return next();
+  }
+  if (PUBLIC_FILES.includes(path)) {
     return next();
   }
 
