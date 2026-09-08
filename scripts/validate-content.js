@@ -1,15 +1,13 @@
 #!/usr/bin/env node
 /**
- * CI gate for content/ — fails the build if desk.json or
- * examiner-questions.json would be rejected (or silently dropped)
- * by src/services/content.js at runtime.
+ * CI gate for content/ — fails the build if desk.json would be
+ * rejected (or silently dropped) by src/services/content.js at runtime.
  *
  * Run: node scripts/validate-content.js
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { questionProblem } from '../src/services/content.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CONTENT_DIR = path.resolve(__dirname, '../content');
@@ -43,9 +41,6 @@ if (desk !== undefined) {
   if (typeof desk !== 'object' || desk === null || Array.isArray(desk)) {
     fail('desk.json: must be an object');
   } else {
-    if (typeof desk.active_cert !== 'string' || !desk.active_cert.trim()) {
-      fail('desk.json: active_cert must be a non-empty string');
-    }
     if (desk.current_class !== null && typeof desk.current_class !== 'string') {
       fail('desk.json: current_class must be a string or null');
     }
@@ -68,25 +63,6 @@ if (desk !== undefined) {
         }
       });
     }
-  }
-}
-
-// ---- examiner-questions.json ----
-const questions = readJson('examiner-questions.json');
-if (questions !== undefined) {
-  if (!Array.isArray(questions)) {
-    fail('examiner-questions.json: must be an array');
-  } else {
-    const seen = new Set();
-    questions.forEach((q, i) => {
-      const problem = questionProblem(q);
-      if (problem) fail(`examiner-questions.json[${i}] (${q?.key ?? 'no key'}): ${problem}`);
-      if (q?.key) {
-        if (seen.has(q.key)) fail(`examiner-questions.json[${i}]: duplicate key "${q.key}"`);
-        seen.add(q.key);
-      }
-    });
-    console.log(`examiner-questions.json: ${questions.length} questions, ${seen.size} unique keys`);
   }
 }
 

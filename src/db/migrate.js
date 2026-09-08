@@ -8,7 +8,7 @@
  * overlap is what broke reads (SQLITE_IOERR_READ) in the Aug 10 incident.
  * Bump SCHEMA_VERSION whenever a statement below changes.
  */
-export const SCHEMA_VERSION = 5; // 1: base, 2: ticker/weather, 3: desk, 4: examiner, 5: desk removed
+export const SCHEMA_VERSION = 6; // 1: base, 2: ticker/weather, 3: desk, 4: examiner, 5: desk removed, 6: examiner removed
 
 export function runMigrations(db) {
   const current = db.pragma('user_version', { simple: true });
@@ -89,64 +89,16 @@ export function runMigrations(db) {
     CREATE INDEX IF NOT EXISTS idx_study_events_due_at ON study_events(due_at);
   `);
 
-  // PR C: The Examiner. Questions are batch-drafted, human-reviewed, and only
-  // then eligible for the paper — nothing here is written at request time.
+  // v5 dropped the desk-era tables; v6 drops the Examiner (puzzle_*) tables.
+  // The feature was removed from the paper and the archives — assignments,
+  // attempts, and the question bank go with it. DROPs are idempotent.
   db.exec(`
-    CREATE TABLE IF NOT EXISTS puzzle_questions (
-      id             INTEGER PRIMARY KEY AUTOINCREMENT,
-      cert_slug      TEXT NOT NULL,
-      domain         TEXT,
-      prompt         TEXT NOT NULL,
-      choices_json   TEXT NOT NULL,
-      answer_indices TEXT NOT NULL,
-      explanation    TEXT NOT NULL,
-      source_url     TEXT,
-      status         TEXT NOT NULL DEFAULT 'draft',
-      model          TEXT,
-      batch_id       TEXT,
-      created_at     TEXT NOT NULL,
-      reviewed_at    TEXT,
-      times_used     INTEGER NOT NULL DEFAULT 0,
-      last_used_on   TEXT,
-      content_key    TEXT
-    );
-
-    -- Drives the least-recently-used pick at publish time.
-    CREATE INDEX IF NOT EXISTS idx_pq_pick
-      ON puzzle_questions(cert_slug, status, last_used_on);
-
-    -- One question pinned per edition. Immutable once written, so an archived
-    -- edition always shows the question it actually printed with.
-    CREATE TABLE IF NOT EXISTS puzzle_assignments (
-      edition_date TEXT PRIMARY KEY,
-      question_id  INTEGER NOT NULL REFERENCES puzzle_questions(id),
-      assigned_at  TEXT NOT NULL
-    );
-
-    -- Honor system: one attempt per edition, ever. chosen_json NULL means the
-    -- answer was revealed without committing to a guess.
-    CREATE TABLE IF NOT EXISTS puzzle_attempts (
-      edition_date TEXT PRIMARY KEY,
-      chosen_json  TEXT,
-      was_correct  INTEGER,
-      answered_at  TEXT NOT NULL
-    );
-  `);
-
-  // v5: repo-file question bank. content_key ties a DB row to its entry in
-  // content/examiner-questions.json; the desk-era tables go away. The ALTER
-  // is conditional because DBs created before v5 lack the column while the
-  // CREATE TABLE above now includes it.
-  const pqCols = db.pragma(`table_info(puzzle_questions)`).map((c) => c.name);
-  if (!pqCols.includes('content_key')) {
-    db.exec(`ALTER TABLE puzzle_questions ADD COLUMN content_key TEXT`);
-  }
-  db.exec(`
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_pq_content_key
-      ON puzzle_questions(content_key) WHERE content_key IS NOT NULL;
-
     DROP TABLE IF EXISTS desk_settings;
     DROP TABLE IF EXISTS grades;
+
+    DROP TABLE IF EXISTS puzzle_attempts;
+    DROP TABLE IF EXISTS puzzle_assignments;
+    DROP TABLE IF EXISTS puzzle_questions;
   `);
 
   db.pragma(`user_version = ${SCHEMA_VERSION}`);
