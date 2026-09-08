@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { getDeskContent, DEFAULT_ACTIVE_CERT } from './content.js';
+import { getDeskContent } from './content.js';
 
 /**
  * Study Desk: the Canvas ICS feed plus class/cert/grades from repo content.
@@ -14,21 +14,6 @@ import { getDeskContent, DEFAULT_ACTIVE_CERT } from './content.js';
  * ticker and weather snapshots.
  */
 
-export { DEFAULT_ACTIVE_CERT };
-
-/**
- * Stable slug for a cert's display name, used as the question bank's
- * partition key. Renaming a cert in the desk list would orphan its bank,
- * so this stays a pure function of the name — no stored ids to migrate.
- */
-export function certSlug(certName) {
-  const name = (certName || DEFAULT_ACTIVE_CERT).trim();
-  if (!name) return null;
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 // Keep future events plus a month of history; hard cap for pathological feeds.
 const PAST_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;

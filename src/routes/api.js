@@ -9,7 +9,6 @@ import {
 } from '../services/edition.js';
 import { getDb } from '../db/index.js';
 import { getStudyDeskView } from '../services/studyDesk.js';
-import { getExaminerView, recordAttempt } from '../services/examiner.js';
 
 const router = Router();
 
@@ -87,42 +86,6 @@ router.get('/editions/:date', (req, res) => {
 // from content/desk.json; deadlines from the ICS refresh on the ingest cron.
 router.get('/study-desk', (req, res) => {
   res.json(getStudyDeskView(getDb()));
-});
-
-// ---- The Examiner ----
-
-// The day's question. Withholds the answer until an attempt is recorded.
-router.get('/puzzle/:date', (req, res) => {
-  const date = String(req.params.date || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'invalid_date' });
-  const view = getExaminerView(getDb(), date);
-  if (!view) return res.status(404).json({ error: 'no_question' });
-  res.json(view);
-});
-
-// One attempt per edition, first write wins. chosen: null = reveal only.
-router.post('/puzzle/:date/attempt', (req, res) => {
-  const date = String(req.params.date || '');
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'invalid_date' });
-
-  const body = req.body || {};
-  let chosen = null;
-  if ('chosen' in body && body.chosen !== null) {
-    if (
-      !Array.isArray(body.chosen) ||
-      !body.chosen.length ||
-      body.chosen.length > 4 ||
-      body.chosen.some((i) => !Number.isInteger(i) || i < 0 || i > 3)
-    ) {
-      return res.status(400).json({ error: 'invalid_chosen' });
-    }
-    chosen = [...new Set(body.chosen)];
-  }
-
-  const result = recordAttempt(getDb(), date, chosen);
-  if (result.error === 'no_question') return res.status(404).json({ error: 'no_question' });
-  if (result.error === 'already_answered') return res.status(409).json({ error: 'already_answered' });
-  res.json(result);
 });
 
 function serializeEdition(row, db) {

@@ -29,22 +29,3 @@ async function jsonOrThrow(res) {
 export async function fetchStudyDesk() {
   return jsonOrThrow(await fetch('/api/study-desk'));
 }
-
-// ---------- The Examiner ----------
-
-export async function fetchPuzzle(date) {
-  const res = await fetch(`/api/puzzle/${date}`);
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load puzzle (${res.status})`);
-  return res.json();
-}
-
-export async function submitPuzzleAttempt(date, chosen) {
-  return jsonOrThrow(
-    await fetch(`/api/puzzle/${date}/attempt`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chosen }),
-    })
-  );
-}
