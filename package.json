@@ -20,7 +20,7 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "better-sqlite3": "^11.8.1",
     "dotenv": "^16.4.7",
-    "express": "^4.21.2",
+    "express": "^5.2.1",
     "express-rate-limit": "^8.7.0",
     "express-session": "^1.18.1",
     "fast-xml-parser": "^5.10.1",
